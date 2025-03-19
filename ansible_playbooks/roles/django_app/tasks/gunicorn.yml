@@ -1,0 +1,30 @@
+- name: create and chown gunicorn log directory
+  file:
+    path: "/var/log/gunicorn"
+    mode: 0750
+    state: directory
+    group: ndologs
+    owner: ndoportal
+    recurse: yes
+
+- name: make sure gunicorn log files exist
+  copy:
+    content: ""
+    dest: "/var/log/gunicorn/{{item}}.log "
+    force: no
+    group: ndologs
+    owner: ndoportal
+    mode: 0640
+  with_items:
+    - access
+    - error
+
+- name: copy gunicorn logrotate config
+  template:
+    src: gunicorn.logrotate.conf
+    dest: /etc/logrotate.d/gunicorn.conf
+
+- name: copy gunicorn supervisor config
+  template:
+    src: gunicorn_ndoportal.ini.j2
+    dest: /etc/supervisord.d/gunicorn_ndoportal.ini

@@ -1,0 +1,34 @@
+- name: create librespeed directory
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/librespeed"
+    state: directory
+- name: copy librespeed frontend
+  template:
+    owner: ndoportal
+    src: librespeed_frontend.html.j2
+    dest: "{{ ndo_home }}/librespeed/index.html"
+- name: librespeed frontend config
+  template:
+    owner: ndoportal
+    src: librespeed_config.js.j2
+    dest: "{{ ndo_home }}/librespeed/librespeed_config.js"
+- name: librespeed frontend styles
+  template:
+    owner: ndoportal
+    src: librespeed_styles.css
+    dest: "{{ ndo_home }}/librespeed/librespeed_styles.css"
+- name: copy librespeed files
+  copy:
+    owner: ndoportal
+    src: "{{ item }}"
+    dest: "{{ ndo_home }}/librespeed/{{ item }}"
+  with_items:
+    - speedtest_worker.js
+    - speedtest.js
+    - Cigna_Logo.png
+- name: recursively set owner
+  file:
+    dest: "{{ ndo_home }}/librespeed"
+    owner: ndoportal
+    recurse: yes

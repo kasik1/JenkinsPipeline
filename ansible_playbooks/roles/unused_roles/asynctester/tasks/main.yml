@@ -1,0 +1,32 @@
+---
+- name: include it
+  include_role:
+    name: async_include_tasks
+#- name: includes
+#  include_tasks:
+#    file: async_start.yml
+#  async: 45
+#  poll: 0
+#  register: sleeper3
+#- name: simulate long running op (200 sec), wait for up to 45 sec, poll every 5 sec
+#  command: /bin/sleep 15
+#  async: 45
+#  poll: 0
+#  register: sleeper
+#- name: simulate long running op (200 sec), wait for up to 45 sec, poll every 5 sec
+#  command: /bin/sleep 15
+#  async: 45
+#  poll: 0
+#  register: sleeper2
+#
+#
+#- name: Wait for asynchronous jobs to end
+#  async_status:
+#    jid: '{{ item.ansible_job_id }}'
+#  register: job_result
+#  until: job_result.finished
+#  retries: 30
+#  with_items:
+#    - "{{sleeper}}"
+#    - "{{sleeper2}}"
+#    - "{{sleeper3}}"

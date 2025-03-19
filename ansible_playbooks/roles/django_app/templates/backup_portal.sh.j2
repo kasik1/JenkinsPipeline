@@ -1,0 +1,55 @@
+#!/bin/env bash
+#===================================================================================
+#
+# FILE: backup_portal.sh
+#
+# USAGE: (via cron): 0 2 * * * /home/ndoportal/ndoportal/django_backend/utils/backup_portal.sh
+#
+# DESCRIPTION: automate creating local portal DB backups
+#
+# OPTIONS: N/A
+# REQUIREMENTS: Already provided by Portal
+# NOTES:
+# AUTHOR: Mark Schoonover <mark.schoonover@cigna.com>
+# COMPANY: Cigna Healthcare
+# VERSION: 1.0
+# CREATED: 04/07/2020
+# REVISION:
+#===================================================================================
+
+# Uncomment next two lines for debugging
+# Hit ENTER key to step through the script
+#set -x
+#trap read debug
+
+BACKUPDIR=/opt/nas/ndoportal/backups
+
+ME=$(hostname -s)
+
+STATE=""
+STARTTIME=$(date +"%Y-%m-%d %H:%M:%S")
+BACKUPDATE=$(date +"%F_%T")
+
+/bin/logger -t [BACKUPINFO] "$0 - Portal backup started: `date` "
+
+$({{ virtual_env_python }} {{ django_path }}/manage.py dumpdata --indent 4 --natural-foreign --natural-primary -e clive.CliveTask -e clive.CliveUnregisteredJob -e clive.CliveCallManagerResult -e flower_redirect -e contenttypes -e auth.Permission > $BACKUPDIR/$ME-$BACKUPDATE.json)
+if [ $? != 0 ]
+then
+    /bin/logger -t [BACKUPERROR] "$0 - $? - BACKUP FAILED!!"
+    STATE="FAILED"
+else
+    /bin/logger -t [BACKUPINFO] "$0 - BACKUP SUCCESS!!"
+    STATE="SUCCESS"
+fi
+
+ENDTIME=$(date +"%Y-%m-%d %H:%M:%S")
+$({{ virtual_env_python }} {{ django_path }}/manage.py runscript dbbackup_send_email --script-args $STATE $STARTTIME $ENDTIME)
+
+#deletes all but the 10 newest files in the backupdir.
+(cd $BACKUPDIR && ls -1tr | head -n -5 | xargs -d '\n' rm -f  --)
+
+#compress backups individually
+(cd $BACKUPDIR && ls  | grep json$ | xargs xz)
+
+/bin/logger -t [BACKUPINFO] "$0 - Portal backup ended: `date` "
+

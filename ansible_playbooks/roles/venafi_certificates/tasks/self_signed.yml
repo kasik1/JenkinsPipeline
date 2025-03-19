@@ -1,0 +1,19 @@
+- name: generate private key
+  become: true
+  openssl_privatekey:
+    path: "{{ privatekey_path }}"
+
+- name: generate csr
+  become: true
+  openssl_csr:
+    path: /etc/ssl/csr/ndoportal.csr
+    common_name: "{{ansible_hostname}}.silver.com"
+    privatekey_path: /etc/ssl/private/ndoportal.pem
+
+- name: Generate a Self Signed OpenSSL certificate
+  become: true
+  openssl_certificate:
+    privatekey_path: /etc/ssl/private/ndoportal.pem
+    path: "{{ crt_path }}"
+    csr_path: /etc/ssl/csr/ndoportal.csr
+    provider: selfsigned

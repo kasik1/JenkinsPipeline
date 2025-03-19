@@ -1,0 +1,72 @@
+---
+- name: Run Functional API Testing
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "set -o pipefail && {{pytest}} api/ --reruns 1 --reruns-delay 30 -n 5 --dist loadscope --workspace={{ jenkins_server_workspace }} --build={{ build }} --branch={{ git_branch }} --html={{test_results_dir}}/functional_testing_api.html --junitxml={{test_results_dir}}/functional_testing_api.xml --self-contained-html --mode=grid -m 'functional and not manual' > {{test_results_dir}}/functional_testing_api_raw.txt"
+  args:
+    chdir: "{{ app_user_home }}/{{ app_name }}/tests/test_cases/"
+  register: functional_api_test_output
+
+- name: Store functional api testing xml report
+  ansible.builtin.fetch:
+    src: "{{test_results_dir}}/functional_testing_api.xml"
+    dest: "{{jenkins_server_workspace}}/target/test-reports/functional_testing_api.xml"
+    flat: true
+
+- name: Create ansi html for functional testing raw output
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "cat functional_testing_api_raw.txt | {{ ansi2html }} > functional_testing_api_raw.html"
+  args:
+    chdir: "{{ test_results_dir }}"
+
+- name: Send webex message
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  ansible.builtin.script: 'webex_test_message.py "{{ webex_bot_token }}" "{{ webex_message_id }}" "{{test_results_dir}}/functional_testing_api_raw.txt"'
+  args:
+    executable: python3
+
+- name: fail playbook if functional tests failed
+  fail:
+    msg: functional tests failed
+  when: functional_api_test_output.failed
+
+- name: Run Functional UI Testing
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "set -o pipefail && {{pytest}} ui/ --reruns 1 --reruns-delay 30 -n 5 --dist loadscope --workspace={{ jenkins_server_workspace }} --build={{ build }} --branch={{ git_branch }} --html={{test_results_dir}}/functional_testing_ui.html --junitxml={{test_results_dir}}/functional_testing_ui.xml --self-contained-html --mode=grid -m 'functional and not manual' > {{test_results_dir}}/functional_testing_ui_raw.txt"
+  args:
+    chdir: "{{ app_user_home }}/{{ app_name }}/tests/test_cases/"
+  register: functional_ui_test_output
+
+- name: Store functional ui testing xml report
+  ansible.builtin.fetch:
+    src: "{{test_results_dir}}/functional_testing_ui.xml"
+    dest: "{{jenkins_server_workspace}}/target/test-reports/functional_testing_ui.xml"
+    flat: true
+
+- name: Create ansi html for functional testing raw output
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "cat functional_testing_ui_raw.txt | {{ ansi2html }} > functional_testing_ui_raw.html"
+  args:
+    chdir: "{{ test_results_dir }}"
+
+- name: Send webex message
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  ansible.builtin.script: 'webex_test_message.py "{{ webex_bot_token }}" "{{ webex_message_id }}" "{{test_results_dir}}/functional_testing_ui_raw.txt"'
+  args:
+    executable: python3
+
+- name: fail playbook if functional tests failed
+  fail:
+    msg: functional tests failed
+  when: functional_ui_test_output.failed

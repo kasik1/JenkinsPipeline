@@ -1,0 +1,14 @@
+- name: install npm requirements
+  become_user: ndoportal
+  npm:
+    path:  "{{ ndo_home }}/ndoportal/angular_frontend"
+    state: latest
+  tags:
+    - build
+    - deploy
+- name: hacky workaround to stop fontawesome from using GET params
+  become_user: ndoportal
+  replace:
+    path: "{{ ndo_home }}/ndoportal/angular_frontend/node_modules/font-awesome/scss/_path.scss"
+    regexp: \?v\=\#\{\$fa\-version\}'
+    replace: "'"

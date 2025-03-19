@@ -1,0 +1,6 @@
+---
+
+#- include_tasks: deploy_angular_app.yml
+#  when: need_to_run
+#- debug:
+#    msg: "after include tasks"

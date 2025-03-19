@@ -1,0 +1,36 @@
+- name: get repo
+  include_role:
+    name: run_role_once
+  vars:
+    role: get_repo
+
+- name: determine if we need to run
+  set_fact:
+    need_to_run: "{%- if run_all or 'angular_frontend' in changed_dirs -%}yes{%- else -%}no{%- endif -%}"
+
+- debug:
+    var: need_to_run
+
+- name: bypass proxy if we need to
+  include_role:
+    name: run_role_once
+  vars:
+    role: cigna_bypass_proxy
+
+- include_role:
+    name: path_commit
+    public: yes
+  vars:
+    commit_paths:
+      - angular_frontend/
+      - ansible_playbooks/roles/angular_app/
+    tasks_name: compile_angular
+    tasks_role: angular_app
+    role_public: yes
+    repo_path: "{{app_directory}}"
+
+- name: Clear angular cache
+  become_user: "{{ app_user }}"
+  shell: "npm cache clean --force"
+  args:
+    chdir: "{{ app_directory }}"

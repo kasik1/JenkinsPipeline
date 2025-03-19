@@ -1,0 +1,11 @@
+- debug:
+    var: deploy_angular_sleeper
+- name: wait for angular to deploy
+  become_user: "{{ app_user }}"
+  async_status:
+    jid: "{{ deploy_angular_sleeper.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 60
+  delay: 30
+  when: (deploy_angular_sleeper is defined and  (deploy_angular_sleeper.failed is defined and deploy_angular_sleeper.failed == false) or deploy_angular_sleeper.skipped != true)

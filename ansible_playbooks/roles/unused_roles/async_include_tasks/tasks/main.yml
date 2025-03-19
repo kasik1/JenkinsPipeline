@@ -1,0 +1,25 @@
+---
+- name: assign vars
+  set_fact:
+    vars_to_pass:
+      vars: "{{vars}}"
+      environment: "{{environment}}"
+      group_names: "{{group_names}}"
+      groups: "{{groups}}"
+      hostvars: "{{hostvars}}"
+- name: put vars in json
+  set_fact:
+    json_to_pass: "{{vars_to_pass | to_yaml}}"
+- name: show json
+  debug:
+    var: json_to_pass
+- name: launch secondary playbook
+#  shell: ansible-playbook
+  shell: "ansible-playbook /Users/C59972/projects/netdevops-portal/ansible_playbooks/roles/async_include_tasks/files/child_playbook.yml -i /Users/C59972/projects/netdevops-portal/ansible_playbooks/optimizer_inventory --extra-vars 'passed_json={{json_to_pass}}'"
+  register: secondary_playbook
+  delegate_to: 127.0.0.1
+  ignore_errors: yes
+- name: output of playbook
+  debug:
+    var: secondary_playbook
+#ansible-playbook child_playbook.yml -i ../../../optimizer_inventory --extra-vars 'passed_json={"key":"value"}

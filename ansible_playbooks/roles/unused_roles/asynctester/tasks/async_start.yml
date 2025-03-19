@@ -1,0 +1,6 @@
+- name: step 1
+  command: /bin/sleep 5
+- name: step 2
+  command: /bin/sleep 15
+- name: step 3
+  command: /bin/sleep 5

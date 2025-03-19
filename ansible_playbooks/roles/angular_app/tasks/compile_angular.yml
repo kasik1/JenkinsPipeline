@@ -1,0 +1,13 @@
+
+- set_fact:
+   ndoportal_build: "{%- if git_branch in ('prod', 'master') -%}buildProdServer{% else %}buildDevServer{%- endif -%}"
+- name: install angular requirements
+  become_user: "{{ app_user }}"
+  shell: "NG_CLI_ANALYTICS=ci npm ci"
+  args:
+    chdir: "{{ app_directory }}/angular_frontend"
+- name: compile angular 
+  become_user: "{{ app_user }}"
+  shell: "NG_CLI_ANALYTICS=ci  npm run-script {{ndoportal_build}}"
+  args:
+    chdir: "{{ app_directory }}/angular_frontend"

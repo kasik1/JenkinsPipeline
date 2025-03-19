@@ -1,0 +1,80 @@
+---
+# tasks file for get_repo
+- name: collect app users home directory
+  become_user: "{{app_user}}"
+  shell: "echo $HOME"
+  register: echo_home_output
+- name: put app users home directory in a variable
+  set_fact:
+    app_user_home: "{{ echo_home_output.stdout }}"
+- name: set app directory
+  set_fact:
+    app_directory: "{{ app_user_home }}/{{app_name}}"
+- name: get app directory stats
+  stat:
+    path: "{{app_directory}}"
+  register: app_directory_stats
+- name: figure out git remote
+  shell: git remote -v | grep fetch | cut  -f2 | grep / | cut -d\( -f1 | sed 's/git@github.sys.cigna.com:/http:\/\/github.sys.cigna.com\//g'| xargs
+  register: git_remote_output
+  delegate_to: 127.0.0.1
+  become: false
+- set_fact:
+    git_remote: "{{git_remote_output.stdout}}"
+- name: debug remote
+  debug:
+    var: git_remote
+- name: figure out git branch
+  become: false
+  shell: git branch | grep \* | cut -d* -f2 | xargs
+  register: git_branch_output
+  delegate_to: 127.0.0.1
+  when: git_branch is not defined
+- set_fact:
+    git_branch: "{{git_branch_output.stdout}}"
+  when: git_branch is not defined
+- name: debug branch
+  debug:
+    var: git_branch
+- set_fact:
+    app_environment: "{%- if git_branch in ('prod', 'master','rallyproductiontest') -%}prod{% else %}dev{%- endif -%}"
+- name: delete repo - not the most efficient, but may let us simply the whole process
+  file:
+    state: absent
+    path: "{{ app_user_home }}/{{app_name}}"
+- name: clone repo
+  become_user: "{{ app_user }}"
+  git:
+    repo: "{{git_remote}}"
+    dest: "{{ app_user_home }}/{{app_name}}"
+    version: "{{git_branch}}"
+    update: no
+    force: yes
+- name: fetch repo
+  become_user: "{{ app_user }}"
+  command: git fetch origin
+  args:
+    chdir: "{{ app_directory }}"
+- name:
+  become_user: "{{app_user}}"
+  shell: "git diff --name-only origin/{{git_branch}} | grep / |  cut -d/ -f1 | sort | uniq"
+  args:
+    chdir: "{{ app_directory }}"
+  register: git_diff_output
+- set_fact:
+    changed_dirs: "{{git_diff_output.stdout_lines}}"
+- set_fact:
+    run_all: "{%- if  not app_directory_stats.stat.exists or 'ansible_playbooks' in changed_dirs -%}yes{% else %}no{%- endif -%}"
+- debug:
+    var: run_all
+- name: reset hard to orign for this branch
+  become_user: "{{ app_user }}"
+  command: "git reset --hard origin/{{git_branch}}"
+  args:
+    chdir: "{{ app_user_home }}/{{app_name}}"
+- name: git clean -df  incase we have extra files
+  become_user: "{{ app_user }}"
+  command: "git clean -df"
+  args:
+    chdir: "{{ app_user_home }}/{{app_name}}"
+  register: git_clean_output

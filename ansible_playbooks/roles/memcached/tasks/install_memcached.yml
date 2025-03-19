@@ -1,0 +1,29 @@
+- name: install memcached
+  dnf:
+    name: memcached
+
+- name: put memcached user in ndologs group
+  user:
+    name: memcached
+    groups: ndologs
+    append: yes
+- name: create and chown memcached log directory
+  file:
+    path: "/var/log/memcached"
+    mode: 0750
+    state: directory
+    group: ndologs
+    owner: memcached
+    recurse: yes
+- name: copy memcached config
+  template:
+    src: memcached.conf
+    dest: /etc/sysconfig/memcached
+    group: root
+    owner: memcached
+    mode: u=rw,g=r
+- name: (re)start memcached
+  service:
+    name: memcached
+    state: restarted
+    enabled: true

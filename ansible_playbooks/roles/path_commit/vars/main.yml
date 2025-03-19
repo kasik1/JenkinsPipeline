@@ -1,0 +1,4 @@
+---
+commit_path:
+commit_paths:
+task_commits_path: "{{path_commits_dir}}/{{tasks_role}}{{tasks_name}}.json"

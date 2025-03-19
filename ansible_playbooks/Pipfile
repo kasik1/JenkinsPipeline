@@ -1,0 +1,13 @@
+[[source]]
+url = "http://repo.sys.cigna.com/artifactory/api/pypi/pypi-repos/simple"
+verify_ssl = false
+name = "cigna"
+
+[packages]
+ansible = "*"
+cached-property = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

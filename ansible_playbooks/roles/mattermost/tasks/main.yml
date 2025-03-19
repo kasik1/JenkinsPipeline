@@ -1,0 +1,13 @@
+---
+# tasks file for running Mattermost Notification
+
+- name: load mattermost token
+  include_vars: mattermost.yml
+
+- name: Send mattermost Notification
+  become_user: "{{ app_user }}"
+  become: yes
+  script: 'mattermost.sh "{{ git_branch }}" "{{ mattermost }}"'
+  args:
+    chdir: "{{ app_user_home }}"
+

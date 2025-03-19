@@ -1,0 +1,4 @@
+installation_path: "/etc/ssl"
+cert_env: "dev"
+cert_temp: "/tmp/cert_temp"
+cert_renewal: false

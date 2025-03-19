@@ -1,0 +1,197 @@
+---
+
+- name: Get appvg partition
+  shell: pvs | grep appvg | awk '{print $1}'
+  register: appvg_partition_output
+
+- set_fact:
+    appvg_partition: "{{appvg_partition_output.stdout}}"
+  when: appvg_partition_output.stdout
+
+- name: Remove appvg group
+  lvg:
+    vg: appvg
+    state: absent
+  when: appvg_partition is defined
+
+# Needed to use a shell command directly as lvg is not that flexible
+- name: Add empty pv to rootvg
+  shell: "vgextend rootvg {{appvg_partition}}"
+  when: appvg_partition is defined
+
+- name: Increase /dev/rootvg/lvopt to 12G
+  lvol:
+    vg: rootvg
+    lv: lvopt
+    resizefs: yes
+    shrink: no
+    size: 12g
+  ignore_errors: yes
+
+- name: Get the current size of /usr directory
+  shell: df /usr --block-size=1K | tail -n 1 | awk '{print $2}'
+  register: usr_size_output
+
+- name: Convert /usr size to GiB
+  set_fact:
+    usr_size_gib: "{{ usr_size_output.stdout | int / 1048576 }}"
+
+- name: Increase /usr to 5G when it's less than 4.7G
+  lvol:
+    vg: rootvg
+    lv: lvusr
+    resizefs: yes
+    shrink: no
+    size: 5g
+  when: usr_size_gib | float < 4.7
+  ignore_errors: yes
+
+- name: figure out git branch
+  become: false
+  shell: git branch | grep \* | cut -d* -f2 | xargs
+  register: git_branch_output
+  delegate_to: 127.0.0.1
+  when: git_branch is not defined
+
+- set_fact:
+    git_branch: "{{git_branch_output.stdout}}"
+  when: git_branch is not defined
+
+- set_fact:
+    lvhome_size: 4g
+
+- debug:
+    var: git_branch
+
+- debug:
+    var: lvhome_size
+
+- name: "Increase /dev/rootvg/lvhome to {{ lvhome_size }}"
+  ignore_errors: yes
+  lvol:
+    vg: rootvg
+    lv: lvhome
+    resizefs: yes
+    size: "{{ lvhome_size }}"
+  ignore_errors: yes
+
+- name: configure logrotation # this could be switched to using separate configs per service in each role
+  copy:
+    src: netdevops.logrotate.conf
+    dest: /etc/logrotate.d/netdevops.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: configure rsyslogd for portal logging
+  copy:
+    src: 00-netdevops.conf
+    dest: /etc/rsyslog.d
+    owner: root
+    group: root
+    mode: 0644
+
+- name: restart rsyslogd to apply portal logging config
+  systemd:
+    name: rsyslog
+    state: restarted
+
+- name: disable epel repo
+  become: yes
+  ansible.builtin.yum_repository:
+    name: epel
+    state: absent
+
+- name: enable US Med epel repo
+  become: yes
+  community.general.rhsm_repository:
+    name: US_Medical_EPEL_8_EPEL_8
+
+- name: Install CLI Utils
+  dnf:
+    name:
+      - psmisc
+      - git
+      - jq
+      - htop
+      - yum-utils
+    state: present
+    disable_gpg_check: true
+
+- name: fix user and group ids if they're wrong,  we should only need this for a short amount of time
+  script: set_user_and_group_ids.sh
+
+- name: setup ndoportal group
+  group:
+    name: ndoportal
+    state: present
+    gid: 44444
+
+- name: setup ndoportal user
+  user:
+    uid: 44444
+    name: ndoportal
+    group: ndoportal
+    comment: "Account to run NDOportal"
+
+- name: Set user password to never expire
+  ansible.builtin.shell: chage --inactive -1 --mindays 0 --maxdays 99999 --expiredate -1 ndoportal
+
+- name: give ndoportal user access to cron
+  lineinfile:
+    path: /etc/security/access.conf
+    state: present
+    line: +:ndoportal:cron
+    insertbefore: -:ALL:ALL
+
+- name: create ndologs group
+  group:
+    name: ndologs
+    state: present
+    gid: 44443
+
+- name: put ndoportal in ndologs group
+  user:
+    name: ndoportal
+    groups: ndologs
+    append: yes
+
+- name: create and chown log directory
+  file:
+    path: "/var/log/netdevops"
+    mode: 0770
+    state: directory
+    group: ndologs
+    owner: root
+    recurse: yes
+
+- name: put splkadmn in ndologs group
+  user:
+    name: splkadmn
+    groups: ndologs
+    append: yes
+
+- set_fact:
+    ndoportal_environment: "{%- if git_branch in ('prod', 'master') -%}prod{% else %}dev{%- endif -%}"
+
+- set_fact:
+    db_environment: "{{ndoportal_environment}}"
+
+- set_fact:
+    db_environment: "local"
+  when: ndoportal_environment == "dev"
+
+- set_fact:
+    db_environment: "staging"
+  when: git_branch == "staging"
+
+- set_fact:
+    db_environment: "dev"
+  when: git_branch == "development"
+
+- name: including global python tasks
+  include_tasks: global_python.yml
+
+- name: include nas if we have a source defined
+  include_tasks: nas.yml
+  when: nas_src is defined

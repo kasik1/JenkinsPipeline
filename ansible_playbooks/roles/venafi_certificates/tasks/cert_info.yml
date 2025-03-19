@@ -1,0 +1,32 @@
+---
+- name: Poll certificate list to find UUID of {{ cert_fqdn }} in {{ cert_bucket }}
+  uri:
+    url: '{{ venafi.url }}/Certificates?Name={{ cert_fqdn }}&ParentDN={{ certs_bucket.certs_policy | urlencode | replace ("%5C%5C", "%5C") }}'
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body_format: json
+    method: GET
+    validate_certs: false
+    return_content: yes
+  register: certlist_drilldown
+
+- name: If no certificate exists, fail the process flow
+  fail:
+    msg: "No certificate exists with this FQDN in this Policy DN. Please check your usage and try again."
+  when:
+    - not certlist_drilldown.json.Certificates.0 is defined
+
+- name: Follow the link provided by the certificate list
+  uri:
+    url: "{{ venafi.host }}{{ certlist_drilldown.json.Certificates.0._links.0.Details }}"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body_format: json
+    method: GET
+    validate_certs: false
+    return_content: yes
+  register: cert_info

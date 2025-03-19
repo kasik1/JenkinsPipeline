@@ -1,0 +1,63 @@
+# I think we should wait to call the part to install python 3 until now.
+- name: set target python version
+  set_fact:
+    python_target_version: "3.10.2"
+
+- name: install python if necessary
+  include_role:
+    name: install_python_from_source
+
+- name: find virtualenv python
+  become_user: ndoportal
+  command: pipenv --py
+  register: virtualenv_python_output
+  ignore_errors: yes
+  args:
+    chdir: "{{ django_path }}"
+
+- name: debug virtual env python path
+  debug:
+    var: virtualenv_python_output
+
+- name: check python version in virtual environment
+  become_user: ndoportal
+  shell: "{{ virtualenv_python_output.stdout }} --version | cut -d' ' -f2"
+  args:
+    chdir: "{{ django_path }}"
+  register: virtualenv_python_version_output
+  ignore_errors: yes
+  when: virtualenv_python_output.stdout is defined
+
+- debug:
+    var: virtualenv_python_version_output
+  when: virtualenv_python_version_output.stdout is defined
+
+- name: set virtualenv python version
+  set_fact:
+    virtualenv_python_version: "{{ virtualenv_python_version_output.stdout }}"
+  when: virtualenv_python_version_output is defined
+
+- name: debug virtualenv python version
+  debug:
+    var: virtualenv_python_version
+
+- name: delete virtualenv if it exists and does not have the correct version of python
+  become_user: ndoportal
+  command: pipenv --rm
+  when: (virtualenv_python_output.stdout is defined) and
+        (virtualenv_python_output.stdout != '') and
+        (virtualenv_python_version != python_target_version)
+  args:
+    chdir: "{{ django_path }}"
+
+- name: make sure all packages match pipfile.lock, and create virtual env if necessary
+  become_user: ndoportal
+  command: pipenv sync
+  args:
+    chdir: "{{ django_path }}"
+
+- name: install no_dep requirements,  get rid of this asap.
+  become_user: ndoportal
+  command: pipenv run pip install ciscoaxl ciscoris --no-deps
+  args:
+    chdir: "{{ django_path }}"

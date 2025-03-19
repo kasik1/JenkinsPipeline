@@ -1,0 +1,28 @@
+---
+python_target_version_list: "{{ python_target_version.split('.') }}"
+major_version: "{{ python_target_version_list[0] }}"
+minor_version: "{{ python_target_version_list[1] }}"
+micro_version: "{{ python_target_version_list[2] }}"
+python_version: "{{major_version}}.{{minor_version}}.{{micro_version}}"
+python_version_string: "Python {{python_version}}"
+python_short_name: "python{{major_version}}"
+python_short_path: "/usr/local/bin/{{python_short_name}}"
+
+pip_binary_name: "pip{{major_version}}.{{minor_version}}"
+pip_binary_path: "/usr/local/bin/{{pip_binary_name}}"
+
+python_binary_name: "{{python_short_name}}.{{minor_version}}"
+python_binary_path: "/usr/local/bin/{{python_binary_name}}"
+python_source_dir: "Python-{{python_version}}"
+python_source_file: "{{python_source_dir}}.tar.xz"
+python_source_url: "https://www.python.org/ftp/python/{{python_version}}/{{python_source_file}}"
+
+python_link_paths:
+  - "{{python_short_path}}"
+  - "/usr/local/bin/{{python_binary_name}}"
+python_make_commands: "./configure && make && make altinstall"
+python_chmod_command: "chmod 0755 {{python_binary_path}}"
+python_link_commands: "{% for link_path in python_link_paths %} && ln -s {{python_binary_path}} {{link_path}} {% endfor %}" # fix this then include with install commands to make async
+python_install_command: "{{python_make_commands}} && {{python_chmod_command}}"
+#https://www.python.org/ftp/python/3.7.5/Python-3.7.5.tar.xz
+# vars file for install_python37

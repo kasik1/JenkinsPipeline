@@ -1,0 +1,27 @@
+{% for queues, max_proc, min_proc, main_queue in [('high', 20, 5, 'high'), ('high,medium,default', 10, 0, 'medium'), ('high,medium,low', 10, 0, 'low') ] %}
+[program:celery{{ main_queue }}]
+
+{#command={{ virtual_env_python }} -m celery.__main__ worker --time-limit=1800 --concurrency=10 -n worker1@{{ansible_hostname}} --purge --app=netdevops --loglevel=INFO --logfile={{ celery_logs_directory }}/worker{{ worker_number }}.log --pidfile=/var/run/celery/worker{{ worker_number }}.pid#}
+; Set full path to celery program if using virtualenv
+command = {{ celery_path }} -A netdevops worker -Q {{ queues }} --autoscale={{ max_proc }},{{ min_proc }} --loglevel WARNING --time-limit=1800 -n worker{{ main_queue }}@{{ansible_hostname}} --logfile={{ celery_logs_directory }}/worker{{ main_queue }}.log --pidfile={{ celery_run_dir }}worker{{ main_queue }}.pid
+directory={{ django_path }}
+user={{ celery_user }}
+numprocs=1
+stdout_logfile=/var/log/supervisor/ndoportal_celery{{ main_queue }}.out.log
+stderr_logfile={{ celery_logs_directory }}/ndoportal_celery{{ main_queue }}.err.log
+autostart=true
+autorestart=true
+startsecs=10
+
+{% endfor %}
+
+[program:flower]
+command={{ celery_path }}  -A netdevops   flower --url_prefix=flower
+directory={{ django_path }}
+user={{ celery_user }}
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile={{ celery_logs_directory }}/flower.out.log
+stderr_logfile={{ celery_logs_directory }}/flower.err.log
+priority=510

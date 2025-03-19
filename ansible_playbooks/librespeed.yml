@@ -1,0 +1,9 @@
+- name: install librespeed backend
+  become: yes
+  gather_facts: no
+  hosts: all
+  tasks:
+    - name: include install_backend tasks from librespeed role
+      include_role:
+        name: librespeed
+        tasks_from: install_backend

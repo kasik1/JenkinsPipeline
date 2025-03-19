@@ -1,0 +1,77 @@
+---
+- name: check if pipenv is installed
+  become_user: ndoportal
+  shell: pipenv --version
+  register: pipenv_version_result
+  ignore_errors: yes
+
+- debug:
+    var: pipenv_version_result
+
+- name: install local pipenv
+  become_user: ndoportal
+  pip:
+    executable: pip3.9
+    name: pipenv
+    extra_args: --user
+    state: latest
+  register: pipenv_install
+  when: pipenv_version_result.failed
+
+- debug:
+    var: pipenv_install
+  when: pipenv_version_result.failed
+
+# - name: Install Google Signing key
+#   ansible.builtin.rpm_key:
+#     key: https://dl.google.com/linux/linux_signing_key.pub
+#     state: present
+
+# - name: Install Google Chrome
+#   dnf:
+#     name: https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+#     state: latest
+
+# - name: Run the yum command to skip the Google repository
+#   ignore_errors: yes
+#   shell: yum-config-manager --save --setopt=google-chrome.skip_if_unavailable=true
+
+# - name: Install Google Chrome
+#   dnf:
+#     name: google-chrome-stable
+#     state: latest
+
+# - name: Make sure chromedriver is not installed from dnf/yum repo
+#   dnf:
+#     name: chromedriver
+#     state: absent
+
+# - name: install appropriate chromedriver version
+#   script: install_chrome_driver.sh
+
+- name: get repo
+  include_role:
+    name: run_role_once
+  vars:
+    role: get_repo
+    app_user: ndoportal
+    app_name: ndoportal
+
+- set_fact:
+    need_to_run: "{%- if run_all or 'django_backend' in changed_dirs -%}yes{%- else -%}no{%- endif -%}"
+
+- include_role:
+    name: path_commit
+  vars:
+    commit_path: django_backend/
+    tasks_name: deploy_django_app
+    tasks_role: django_app
+    repo_path: "{{app_directory}}"
+
+- name: copy portal backup script to django_backend/utils
+  template:
+    src: backup_portal.sh.j2
+    dest: "/home/ndoportal/ndoportal/django_backend/utils/backup_portal.sh"
+    owner: ndoportal
+    group: ndologs
+    mode: 0770

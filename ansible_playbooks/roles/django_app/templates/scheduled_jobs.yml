@@ -1,0 +1,398 @@
+# This file is for cron jobs that only need to be run on one server  in the F5 Pool,  and possibly only on certain branches
+# Each item needs a name which is the primary key in the django database, so it must be unique
+# Each item needs a command  which can be either a long form bash one liner,
+# or the name of a script in the django_backend/scripts directory
+# if it is a django script django_script must be set to true
+# Each item needs a list of branches, which can either be the full name of a branch, or a regular expression
+#  for example  "master" only matches the master branch ".*" matches every branch, and "F\d*?_US\d*?_.*"  matches all
+# the properly named feature branches
+#
+#
+# The ansible playbook will run the script to load this file, and only the ones that match the current branch will be added
+#
+- name: sync scheduled jobs
+  branches:
+    - .*
+  command: save_all_crons
+  cron_schedule: '16 * * * *'
+  django_script: true
+  skip_lock: true
+- name: password change future changes
+  branches:
+    - .*
+  command: create_future_pw_changes
+  cron_schedule: '0 0 * * 0'
+  django_script: true
+  skip_lock: true
+- name: example from django script
+  branches:
+  - F157060_US750963_SpikeSchedulerJobStrategy
+  command: example_scheduled_script
+  cron_schedule: '*/5 * * * *'
+  django_script: true
+
+- name: example from command line
+  branches:
+  - F157060_US750963_SpikeSchedulerJobStrategy
+  command: date > ~/example_cron_command.txt && hostname > ~/example_cron_command.txt
+  cron_schedule: '*/5 * * * *'
+  django_script: false
+
+- name: Clean aws vpn tunnel
+  branches:
+    - .*
+  command: cleanup_aws_vpn_tunnel
+  django_script: true
+  cron_schedule: '0 4 * * *'
+
+- name: schedule daily backups
+  branches:
+    - master
+    - development
+    - staging
+  django_script: false
+  command: /home/ndoportal/ndoportal/django_backend/utils/backup_portal.sh
+  cron_schedule: '30 2 * * *'
+
+
+- name: schedule Vmanage backups
+  branches:
+    - master
+  django_script: true
+  command: vmanage_backup
+  cron_schedule: '0 4 * * 6'
+
+- name: Automate QSR Report
+  branches:
+    - master
+  django_script: true
+  command: qsr_report_nautobot
+  cron_schedule: '0 0 1 * *'
+
+- name: Notify expiring Zscaler policies
+  branches:
+    - master
+  django_script: true
+  command: expiring_groups_policies
+  cron_schedule: '0 0 * * 1-5'
+
+- name: Extract Zscaler Client Connect Log on/off users events
+  branches:
+    - master
+  django_script: true
+  command: client_connect_offline_users_collector
+  cron_schedule: '0 8,12,16 * * 1-5'
+
+- name: Daily Zscaler Client Connect Log on/off users report
+  branches:
+    - master
+  django_script: true
+  command: client_connect_offline_users_report --script-args d
+  cron_schedule: '10 16 * * 1-5'
+
+- name: Weekly Zscaler Client Connect Log on/off users report
+  branches:
+    - master
+  django_script: true
+  command: client_connect_offline_users_report --script-args w
+  cron_schedule: '15 16 * * 5'
+
+
+# - name: MACD Reporting Email discrepancies
+#  branches:
+#    - master
+#    - development
+#    - staging
+#  django_script: true
+#  command: macd_email_discrepancies_send_task
+#  cron_schedule: '0 7 * * 1'
+
+- name: Gather Clive Data
+  branches:
+    - master
+  django_script: true
+  command: clive_gather_data
+  cron_schedule: '0 * * * *'
+
+- name: Gather Clive Data
+  branches:
+    - development
+    - .*?[aA][rR][uU][bB][aA].*
+    - .*?[cC]\-?[lL][iI][vV][eE].*
+    - staging
+  django_script: true
+  command: clive_gather_data
+  cron_schedule: '0 6 * * *'
+
+- name: Gather Dashboard Data
+  branches:
+    - master
+  django_script: true
+  command: clive_gather_dashboard
+  cron_schedule: '*/20 * * * *'
+
+- name: Gather Dashboard Clients
+  branches:
+    - master
+  django_script: true
+  command: clive_gather_dashboard_clients
+  cron_schedule: '*/30 * * * *'
+
+- name: Update Inventory App
+  branches:
+    - development
+    - staging
+    - master
+    - .*[eE](asy|ASY)(-|_|\.|\s)?[bB](utton|UTTON).*
+  django_script: true
+  command: inventory_update
+  cron_schedule: '0 23 * * 0'
+
+- name: Clive Service Catalog Email
+  branches:
+    - master
+  django_script: true
+  command: clive_service_catalog
+  cron_schedule: '15 12 1  * *'
+
+- name: Reboot Unregistered Phones
+  branches:
+    - master
+  django_script: true
+  command: clive_unregistered_phones_reboot
+  cron_schedule: '55 5 * * *'
+
+- name: Clive Service Catalog Email
+  branches:
+    - master
+  django_script: true
+  command: clive_service_catalog
+  cron_schedule: '5 12 1 * *'
+
+- name: Gather Clive Tanium Data
+  branches:
+    - master
+  django_script: true
+  command: clive_gather_tanium_data
+  cron_schedule: '0 13 * * *'
+
+- name: Extract and update NDO stats
+  branches:
+    - development
+    - staging
+    - master
+  django_script: true
+  command: ndo_stats_update
+  cron_schedule: '0 0 * * *'
+
+- name: C-LIVE Task Cleanup
+  branches:
+    - master
+  django_script: true
+  command: clive_task_cleanup
+  cron_schedule: '12 3 * * *'
+
+- name: Clive Fix Sites
+  branches:
+    - master
+  django_script: true
+  command: clive_fix_sites
+  cron_schedule: '44 0 * * *'
+
+- name: LBAAS - Gather F5 VIPs
+  branches:
+    - master
+  django_script: true
+  command: lbaas_research_vip
+  cron_schedule: '10 1 * * *'
+
+- name: LBAAS - Retrieve autorouting information
+  branches:
+    - master
+  django_script: true
+  command: lbaas_autoroute
+  cron_schedule: '0 4 * * 1'
+
+- name: C-LIVE Meraki Clean Up
+  branches:
+    - master
+  django_script: true
+  command: clive_assign_meraki_devices
+  cron_schedule: '37 12 * * 1-5'
+
+- name: C-LIVE Fix Meraki Networks
+  branches:
+    - master
+  django_script: true
+  command: clive_fix_meraki_networks
+  cron_schedule: '37 0 * * *'
+
+- name: C-LIVE Cleanup Meraki Devices
+  branches:
+    - master
+  django_script: true
+  command: clive_meraki_cleanup
+  cron_schedule: '0 23 * * 2'
+
+- name: C-LIVE Create or Update CI Records
+  branches:
+    - master
+  django_script: true
+  command: clive_create_update_ci_records
+  cron_schedule: '18 23 * * *'
+
+- name: C-LIVE Controllers Connection Count
+  branches:
+    - master
+  django_script: true
+  command: clive_controllers_connection_count
+  cron_schedule: '30 * * * *'
+
+- name: C-LIVE Controllers Connection Count - Keep Six Months
+  branches:
+    - master
+  django_script: true
+  command: clive_keep_six_months_controller_counts
+  cron_schedule: '0 0 * * *'
+
+- name: LBAAS - Update Application Info From SNOW
+  branches:
+    - master
+  django_script: true
+  command: lbaas_update_app_info
+  cron_schedule: '0 0 * * 0'
+
+- name: LBAAS - ASM Report
+  branches:
+    - master
+  django_script: true
+  command: lbaas_get_asm_report
+  cron_schedule: '0 1 * * 6'
+
+- name: C-LIVE Add Devices To Inventory
+  branches:
+    - master
+  django_script: true
+  command: clive_add_devices_to_inventory
+  cron_schedule: '5 5 * * *'
+
+- name: DNSaaS Get Available Domains
+  branches:
+    - master
+  django_script: true
+  command: dnsaas_get_available_domains
+  cron_schedule: '0 0 * * *'
+
+- name: C-LIVE Netaddr OUI Update
+  branches:
+    - master
+  django_script: true
+  command: clive_update_netaddr_oui
+  cron_schedule: '3 3 * * 4'
+
+- name: C-LIVE Rebuild Failed Meraki Builds
+  branches:
+    - master
+  django_script: true
+  command: clive_retry_meraki_builds
+  cron_schedule: '11 * * * *'
+
+- name: C-LIVE Delete Down APs
+  branches:
+    - master
+  django_script: true
+  command: clive_delete_down_aps
+  cron_schedule: '2 2 * * 1'
+
+- name: C-LIVE LDAP User Email Update
+  branches:
+    - master
+  django_script: true
+  command: clive_ldap_user_email_update
+  cron_schedule: '0 0 * * 3'
+
+# - name: Sync F5
+#   branches:
+#     - master
+#   django_script: true
+#   command: lbaas_sync_f5
+#   cron_schedule: '0 2 * * *'
+
+- name: Sync F5 After Batch Job
+  branches:
+    - master
+  django_script: true
+  command: lbaas_sync_after_batch_job
+  cron_schedule: '50 2 * * *'
+
+- name: pull last sync detail for all F5s
+  branches:
+    - master
+  django_script: true
+  command: f5_last_sync_update_job
+  cron_schedule: '0 4 * * *'
+
+- name: Node List
+  branches:
+    - master
+  django_script: true
+  command: update_F5_nodelist
+  cron_schedule: '0 3 * * *'
+
+- name: C-LIVE Lan ID Fix
+  branches:
+    - master
+  django_script: true
+  command: clive_lan_id_fix
+  cron_schedule: '10 10 * * *'
+
+- name: Saviynt Prod Automation
+  branches:
+    - master
+  django_script: true
+  command: saviynt_automation
+  cron_schedule: '0 6 * * 5'
+
+- name: Algosec_snow_data
+  branches:
+    - development
+    - master
+  django_script: true
+  command: fw_dashboard_pull_algosec_data
+  cron_schedule: '0 5 * * *'
+
+- name: NDO Batch Processing
+  branches:
+    - NETDEVOPSA-4068_LBaaS_Update_to_Batch_Job
+    - master
+  django_script: true
+  command: run_batch_jobs
+  cron_schedule: "*/5 * * * *"
+
+- name: update Networkips
+  branches:
+    - master
+  django_script: true
+  command: dnsaas_add_networkips
+  cron_schedule: "0 */1 * * 0"
+
+- name: Store snmp whitelist result
+  branches:
+    - master
+  django_script: true
+  command: store_snmp_whitelist_result
+  cron_schedule: "0 6 * * *"
+
+- name: f5 Vip decom script
+  branches:
+    - master
+  django_script: true
+  command: f5_vip_decom
+  cron_schedule: "0 5 * * *"
+
+- name: firewall decom script
+  branches:
+    - master
+  django_script: true
+  command: firewall_decom_script
+  cron_schedule: "0 22 * * *"

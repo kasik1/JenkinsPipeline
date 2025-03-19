@@ -1,0 +1,219 @@
+- block:
+    - name: setup virtual environment
+      include_role:
+        name: path_commit
+      vars:
+        commit_paths:
+          - django_backend/Pipfile
+          - django_backend/Pipfile.lock
+          - ansible_playbooks/roles/django_app/tasks/virtual_environment.yml
+        tasks_name: virtual_environment
+        tasks_role: django_app
+        repo_path: "{{app_directory}}"
+  become_user: ndoportal
+
+- name: save_environment #this should maybe be an environment variable or a separate not secret file, but this works for now
+  become_user: ndoportal
+  command: "pipenv run python -c \"from ndosecrets import save_secret; save_secret('ndoportal_environment', '{{ ndoportal_environment }}')\""
+  args:
+    chdir: "{{django_path}}"
+
+#- name: Register Vault Server
+#  set_fact:
+#    vault_env: 'https://ndovault.sys.cigna.com'
+#  when: ndoportal_environment == 'prod'
+
+- name: save DB secret key locally (only used for dev/feature branch)
+  become_user: ndoportal
+  command: "pipenv run python -c \"from ndosecrets import save_secret; save_secret('db_secret_key', '{{ db_environment }}')\""
+  args:
+    chdir: "{{django_path}}"
+
+- name: Get a new approle for the server
+  become_user: ndoportal
+  command: "pipenv run python -c \"from ndosecrets.ndo_vault import create_approle; create_approle('{{ inventory_hostname }}', ['{{ ansible_facts.default_ipv4.address }}'], policies=['developers'], auth={'type':'approle', 'role_id':'{{ vault_role_id }}', 'secret_id': '{{ vault_secret_id }}' }, urls=['{{ vault_url }}'])\""
+  args:
+    chdir: "{{django_path}}"
+
+- name: Get a new approle for Network Vault
+  become_user: ndoportal
+  command: "pipenv run python -c \"from ndosecrets.ndo_vault import create_approle; create_approle('{{ inventory_hostname }}', ['{{ ansible_facts.default_ipv4.address }}'], 'network_vault_approle', policies=['ndoportal_password_utility'], auth={'type':'approle', 'role_id':'{{ network_vault_role_id }}', 'secret_id': '{{ network_vault_secret_id }}' }, urls=['{{ network_vault_env }}'])\""
+  args:
+    chdir: "{{django_path}}"
+#  register: new_approle
+#
+#- debug:
+#    var: new_approle
+#
+#- name: save Server Approle
+#  become_user: ndoportal
+#  command: "pipenv run python -c \"from local_library import secrets; secrets.save_secret('vault_approle', {{ new_approle.stdout }})\""
+#  args:
+#    chdir: "{{django_path}}"
+
+- name: save secrets
+  become_user: ndoportal
+  command: "pipenv run python -c \"from ndosecrets import save_secrets; save_secrets({{ secrets }})\""
+  args:
+    chdir: "{{django_path}}"
+
+- name: record pipenv path
+  become_user: ndoportal
+  command: pipenv --venv
+  args:
+    chdir: "{{ django_path }}"
+  register: pipenv_output
+
+- name: set virtual_env path
+  set_fact:
+    virtual_env: "{{pipenv_output.stdout}}"
+
+- name: create log directory #may not need
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/logs"
+    state: directory
+
+- name: chown logs directory to group ndologs
+  file:
+    path: "{{ ndo_home }}/logs"
+    group: ndologs
+    recurse: yes
+
+- name: migrate DB
+  become_user: ndoportal
+  django_manage:
+    command: "migrate"
+    python_path:  "{{ django_path }}"
+    app_path: "{{ django_path }}"
+    virtual_env:  "{{virtual_env}}"
+    settings: netdevops.settings
+  run_once: true
+  register: migrate_output
+
+# - name: load fixtures
+#   become_user: ndoportal
+#   command: pipenv run ./manage.py loaddata areas.json
+#   args:
+#     chdir: "{{ django_path }}"
+
+- name: collect static
+  become_user: ndoportal
+  django_manage:
+    command: "collectstatic"
+    python_path:  "{{ django_path }}"
+    app_path: "{{ django_path }}"
+    virtual_env:  "{{pipenv_output.stdout}}"
+    settings: netdevops.settings
+  register: migrate_output
+
+- name: check if admin user exists
+  become_user: ndoportal
+  run_once: yes
+  command: "pipenv run ./manage.py shell --command \"from django.contrib.auth.models import User; print(User.objects.filter(username='admin').exists(),end='')\""
+  args:
+    chdir: "{{django_path}}"
+  register: admin_user_exists
+
+- debug:
+    var: admin_user_exists
+#- name: check if admin user exists
+#  become_user: ndoportal
+#  register: admin_user_exists
+#  django_manage:
+#    app_path: "{{ django_path }}"
+#    python_path:  "{{ django_path }}"
+#    virtual_env:  "{{virtual_env}}"
+#    settings: netdevops.settings
+#    command: shell --command "from django.contrib.auth.models import User; print(User.objects.filter(username='admin').exists(),end='')"
+#  run_once: yes
+- name: create admin user
+  ignore_errors: yes # change to have another check somehow.
+  become_user: ndoportal
+  django_manage:
+    python_path:  "{{ django_path }}"
+    app_path: "{{ django_path }}"
+    virtual_env:  "{{virtual_env}}"
+    settings: netdevops.settings
+    command: createsuperuser --noinput --username admin --email donotreply@cigna.com
+  run_once: yes
+  when: admin_user_exists.stdout == "False"
+
+- name: set admin user password
+  become_user: ndoportal
+  expect:
+    command: pipenv run ./manage.py changepassword admin
+    chdir: "{{ django_path }}"
+    responses:
+      Password: "{{ django_admin_password }}"
+  run_once: yes
+  when: admin_user_exists.stdout == "False"
+
+- name: check if base user exists
+  become_user: ndoportal
+  run_once: yes
+  command: "pipenv run ./manage.py shell --command \"from django.contrib.auth.models import User; print(User.objects.filter(username='base_user').exists(),end='')\""
+  args:
+    chdir: "{{django_path}}"
+  register: base_user_exists
+
+- debug:
+    var: base_user_exists
+
+- name: create base user
+  ignore_errors: yes
+  become_user: ndoportal
+  django_manage:
+    python_path:  "{{ django_path }}"
+    app_path: "{{ django_path }}"
+    virtual_env:  "{{virtual_env}}"
+    settings: netdevops.settings
+    command: createsuperuser --noinput --username base_user --email donotreply@cigna.com
+  run_once: yes
+  when: base_user_exists.stdout == "False"
+
+- name: set base user password
+  become_user: ndoportal
+  expect:
+    command: pipenv run ./manage.py changepassword base_user
+    chdir: "{{ django_path }}"
+    responses:
+      Password: "{{ django_admin_password }}"
+  run_once: yes
+  when: base_user_exists.stdout == "False"
+
+
+- name: Load Test Data for non prod
+  become_user: ndoportal
+  django_manage:
+    python_path: "{{ django_path }}"
+    app_path: "{{ django_path }}"
+    virtual_env: "{{virtual_env}}"
+    settings: netdevops.settings
+    command: ndo_load_test_data
+  run_once: yes
+  ignore_errors: yes
+  when: ndoportal_environment != "prod"
+
+- name: including gunicorn tasks
+  include_tasks: gunicorn.yml
+
+- name: including celery tasks
+  include_tasks: celery.yml
+
+- name: copying backup scripts
+  include_tasks: copy_backup_scripts.yml
+
+- name: including scheduled jobs tasks
+  include_tasks: scheduled_jobs.yml
+
+- name: make release
+  become_user: ndoportal
+  run_once: yes
+  django_manage:
+    python_path: "{{ django_path}}"
+    app_path: "{{ django_path }}"
+    virtual_env: "{{ virtual_env }}"
+    settings: netdevops.settings
+    command: makerelease
+

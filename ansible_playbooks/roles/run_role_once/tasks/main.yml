@@ -1,0 +1,12 @@
+---
+- set_fact:
+    ran_roles: []
+  when: ran_roles is not defined
+- set_fact:
+    run_this_role: "{%- if role in ran_roles -%}no{% else %}yes{%- endif -%}"
+- include_role:
+    name: "{{role}}"
+  when: run_this_role
+- set_fact:
+    ran_roles: "{{ran_roles + [role]}}"
+  when: run_this_role

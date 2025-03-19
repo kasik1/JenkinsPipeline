@@ -1,0 +1,96 @@
+---
+- name: Bypass proxy if we haven't yet
+  include_role:
+    name: run_role_once
+  vars:
+    role: cigna_bypass_proxy
+- name: Get Ansible Controller home dir
+  become: no
+  shell: "echo $HOME"
+  register: echo_ansible_home_output
+  delegate_to: 127.0.0.1
+
+- name: put ansible users home directory in a variable
+  set_fact:
+    ansible_user_home: "{{ echo_ansible_home_output.stdout }}"
+- name: Copy python source from local home directory, if this fails you need the correct source version
+  ansible.builtin.copy:
+    src: "{{ansible_user_home}}/{{ python_source_file }}"
+    dest: "{{ python_source_file }}"
+#- name: copy script to download python
+#  copy:
+#    src: download_python.sh
+#    dest: ~/download_python.sh
+#    mode: u=rx,g=rx,o=rx
+#- name: download {{ python_source_url }}
+#  # this uses Curl from a shell script because for some reason get_url no longer works in silver
+#  # the script also tries twice because sometimes the proxy makes you go twice ¯\_(ツ)_/"
+#  shell:
+#    cmd: "./download_python.sh {{ python_source_url }} ~/{{python_source_file}}"
+#    chdir: "~/"
+#  async: 1000
+#  poll: 0
+#  register: python_download_sleeper
+#- name: download {{ python_source_url }}
+#  # this uses Curl from a shell script because for some reason get_url no longer works in silver
+#  # the script also tries twice because sometimes the proxy makes you go twice ¯\_(ツ)_/"
+#  shell:
+#    cmd: "./download_python.sh {{ python_source_url }} ~/{{python_source_file}}"
+#    chdir: "~/"
+#  async: 1000
+#  poll: 0
+#  register: python_download_sleeper
+- name: Make sure we have the yum packages necessary to compile Python
+  become_user: root
+  dnf:
+    name:
+    - python3-devel
+    - openldap-devel
+    - zlib-devel
+    - libffi-devel
+    - "@development"
+    - zlib-devel
+    - bzip2-devel
+    - openssl-devel
+    - ncurses-devel
+    - sqlite-devel
+    - readline-devel
+    - tk-devel
+    - gdbm-devel
+    - xz-devel
+    - expat-devel
+    state: present
+#  async: 1000
+#  poll: 0
+#  register: python_yum_sleeper
+
+#- name: Wait for Previous tasks to finish
+#  async_status:
+#    jid: '{{ item.ansible_job_id }}'
+#  register: job_result
+#  until: job_result.finished
+#  retries: 3000
+#  with_items:
+#    - "{{python_yum_sleeper}}"
+#    - "{{python_download_sleeper}}"
+
+- name: "extract source from {{python_source_file}}"
+  unarchive:
+    src: "~/{{python_source_file}}"
+    dest: ~/
+    remote_src: yes
+#These things are all one line so they can be async and just run
+- debug:
+    var: python_install_command
+- name: "configure, make, altinstall for {{python_version_string}}"
+  shell: "{{python_install_command}}"
+  become_user: root
+  args:
+    chdir: "/home/ndoportal/{{python_source_dir}}"
+
+#- name: Create Python Symlinks
+#  file:
+#    src: "{{python_binary_path}}"
+#    dest: "{{item}}"
+#    state: link
+#  with_items: "{{python_link_paths}}"

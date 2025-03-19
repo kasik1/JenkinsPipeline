@@ -1,0 +1,13 @@
+#!/bin/env bash
+DUMPPATH=/var/tmp
+
+$(cd /home/ndoportal/ndoportal/django_backend && pipenv run ./manage.py dumpdata macd --indent 2 > $DUMPPATH/macd.json)
+if [ $? != 0 ]
+then
+    /bin/logger -t [BERROR] "$0 - $? - MACD Datadump FAILED!!"
+    STATE="FAILED"
+else
+    /bin/logger -t [BINFO] "$0 - MACD Datadump SUCCESS!!"
+    STATE="SUCCESS"
+fi
+

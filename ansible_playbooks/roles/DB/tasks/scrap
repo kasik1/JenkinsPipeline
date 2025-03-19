@@ -1,0 +1,32 @@
+Skipped Update of Package Django: 2.2.7 installed, 3.0.2 available.
+Skipped Update of Package tornado: 5.1.1 installed, 6.0.3 available.
+Skipped Update of Package textfsm: 0.4.1 installed, 1.1.0 available.
+Package 'packaging' out-of-date: '==19.2' installed, '==20.0' available.
+Package 'pyparsing' out-of-date: '==2.4.5' installed, '==2.4.6' available.
+Package 'django-auth-ldap' out-of-date: '==2.0.0' installed, '==2.1.0' available.
+Package 'py' out-of-date: '==1.8.0' installed, '==1.8.1' available.
+Package 'celery' out-of-date: '==4.4.0rc4' installed, '==4.4.0' available.
+Package 'djangorestframework' out-of-date: '==3.10.3' installed, '==3.11.0' available.
+Package 'certifi' out-of-date: '==2019.9.11' installed, '==2019.11.28' available.
+Package 'kombu' out-of-date: '==4.6.6' installed, '==4.6.7' available.
+Package 'openpyxl' out-of-date: '==3.0.1' installed, '==3.0.2' available.
+Package 'pluggy' out-of-date: '==0.13.0' installed, '==0.13.1' available.
+Package 'django-crispy-forms' out-of-date: '==1.8.0' installed, '==1.8.1' available.
+Package 'pyrsistent' out-of-date: '==0.15.5' installed, '==0.15.6' available.
+Package 'Pygments' out-of-date: '==2.4.2' installed, '==2.5.2' available.
+Package 'more-itertools' out-of-date: '==7.2.0' installed, '==8.0.2' available.
+Package 'gevent' out-of-date: '==1.5a2' installed, '==1.5a3' available.
+Package 'lxml' out-of-date: '==4.4.1' installed, '==4.4.2' available.
+Package 'importlib-metadata' out-of-date: '==0.23' installed, '==1.3.0' available.
+Package 'pytest' out-of-date: '==5.3.0' installed, '==5.3.2' available.
+Package 'paramiko' out-of-date: '==2.6.0' installed, '==2.7.1' available.
+Package 'uritemplate' out-of-date: '==3.0.0' installed, '==3.0.1' available.
+Package 'PyYAML' out-of-date: '==5.1.2' installed, '==5.3b1' available.
+Package 'gunicorn' out-of-date: '==20.0.0' installed, '==20.0.4' available.
+Package 'curtsies' out-of-date: '==0.3.0' installed, '==0.3.1' available.
+Package 'Babel' out-of-date: '==2.7.0' installed, '==2.8.0' available.
+Package 'beautifulsoup4' out-of-date: '==4.8.1' installed, '==4.8.2' available.
+Package 'wcwidth' out-of-date: '==0.1.7' installed, '==0.1.8' available.
+
+
+

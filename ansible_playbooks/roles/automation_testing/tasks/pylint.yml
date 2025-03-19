@@ -1,0 +1,30 @@
+---
+# Pylint Tasks
+
+- name: setup pylintrc
+  become_user: "{{ app_user }}"
+  become: yes
+  shell: "pipenv run  ./make_pylintrc.py"
+  args:
+    chdir: "{{ ndo_django_path }}"
+  register: test_output
+
+- name: Run pylint
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "pipenv run python -m pylint --rcfile=.pylintrc ../django_backend/ > {{ndo_test_results_path}}/pylint.json"
+  args:
+    chdir: "{{ ndo_django_path }}"
+  register: test_output
+
+- name: create pylint html
+  become_user: "{{ app_user }}"
+  become: yes
+  shell: "pipenv run pylint-json2html -f jsonextended -o {{ndo_test_results_path}}/pylint.html {{ndo_test_results_path}}/pylint.json"
+  args:
+    chdir: "{{ ndo_django_path }}"
+  register: test_output
+
+- debug:
+    var: test_output

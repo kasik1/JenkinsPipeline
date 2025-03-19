@@ -1,0 +1,7 @@
+{
+  "CertificateDN": "{{ certs_bucket.certs_policy }}\\{{ cert_fqdn }}",
+  "Format": "{{ format_json }}",
+  "IncludePrivateKey": "{{ cert_include_private_key | default(true) | string | lower }}",
+  "IncludeChain": "{{ cert_include_chain | default(true) | string | lower }}",
+  "Password": "{{ cert_password | default(random_pass) }}"
+}

@@ -1,0 +1,57 @@
+---
+- name: Create a random password to use for generating the private key
+  set_fact:
+    random_pass: "{{ 9999999999999999999999 | random | to_uuid }}"
+    format_json: "Base64 (PKCS #8)"
+
+- name: Show random password
+  debug:
+    var: random_pass
+  when:
+    - not cert_password is defined
+
+- name: Save password to a file
+  copy:
+    dest: "{{ cert_temp }}/{{ cert_fqdn }}_crt_pass.txt"
+    content: "{{ cert_password | default(random_pass) }}"
+  become: yes
+
+- name: Retrieve certificate
+  uri:
+    url: "{{ venafi.url }}/Certificates/Retrieve"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body: "{{ lookup('template', 'retrieve_payload.json.j2') }}"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  until: venafi_cert.status == 200
+  delay: 30
+  retries: "{{ retry_count | default(10) }}"
+  register: venafi_cert
+  ignore_errors: yes
+
+- block:
+  - name: Save encoded certificate data to a file
+    lineinfile:
+      line: "{{ venafi_cert.json.CertificateData }}"
+      path: "{{ cert_temp }}/{{ cert_fqdn }}_pem.b64"
+      create: yes
+      insertafter: EOF
+    become: yes
+
+  - name: Use system Base64 util to decode the cert
+    shell: "set -o pipefail && cat {{ cert_temp }}/{{ cert_fqdn }}_pem.b64 | base64 --decode > {{ cert_temp }}/{{ cert_fqdn }}.crt"
+    changed_when: ansiblelint_ignore is defined
+    become: yes
+
+  - name: Remove encoded certificate file
+    file:
+      path: "{{ cert_temp }}/{{ cert_fqdn }}_pem.b64"
+      state: absent
+    become: yes
+  when:
+    - venafi_cert.status == 200

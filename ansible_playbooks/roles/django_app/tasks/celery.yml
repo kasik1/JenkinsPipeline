@@ -1,0 +1,60 @@
+
+- name: add variables for celery
+  set_fact:
+    virtual_env_python: "{{virtual_env}}/bin/python"
+    celery_logs_directory: "/var/log/celery"
+    celery_run_dir: "{{ndo_home}}/celerypids/"
+    celery_user: ndoportal
+
+- name: create celery run directory
+  file:
+    path: "{{ celery_run_dir }}"
+    state: directory
+    owner: "{{ celery_user }}"
+    group: "{{ celery_user }}"
+
+- name: create celery log directory
+  file:
+    path: "{{ celery_logs_directory }}"
+    state: directory
+    owner: ndoportal
+    group: ndologs
+    mode: 0750
+    recurse: yes
+
+- name: get celery path
+  become_user: ndoportal
+  shell: pipenv run /usr/bin/which celery | tail -n1
+  args:
+    chdir: "{{ django_path }}"
+  register: celery_path_output
+
+- name: set celery path
+  set_fact:
+    celery_path: "{{celery_path_output.stdout}}"
+#- name: get flower path
+#  become_user: ndoportal
+#  command: pipenv run /usr/bin/which flower
+#  args:
+#    chdir: "{{ django_path }}"
+#  register: flower_path_output
+#- name: set flower path
+#  set_fact:
+#    flower_path: "{{flower_path_output.stdout}}"
+- name: copy celery supervisor config
+  template:
+    src: celery_ndoportal.ini.j2
+    dest: /etc/supervisord.d/celery_ndoportal.ini
+  tags:
+    - deploy
+
+- name: copy celery logrotate config
+  template:
+    src: celery.logrotate.conf
+    dest: /etc/logrotate.d/celery.conf
+
+- name: copy celery supervisor config
+  template:
+    src: celery_ndoportal.ini.j2
+    dest: /etc/supervisord.d/celery_ndoportal.ini
+    

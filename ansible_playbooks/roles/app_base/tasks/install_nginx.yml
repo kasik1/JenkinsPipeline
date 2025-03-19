@@ -1,0 +1,93 @@
+- name: Install Nginx and Supervisor
+  dnf:
+    name:
+      - nginx
+      - supervisor
+    state: present
+    disable_gpg_check: true
+
+- name: create and chown supervisor log directory
+  file:
+    path: "/var/log/supervisor"
+    mode: 0750
+    state: directory
+    group: ndologs
+    owner: root
+    recurse: yes
+
+- name: copy supervisord config
+  copy:
+    src: supervisord.conf
+    dest: /etc/supervisord.conf
+    owner: root
+    group: root
+    mode: 0644
+  register: nginxconf
+
+- name: create and chown nginx log directory
+  file:
+    path: "/var/log/nginx"
+    mode: 0750
+    state: directory
+    group: ndologs
+    owner: root
+    recurse: yes
+
+- name: create static directory
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/static_files"
+    state: directory
+
+- name: create test_results directory
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/test_results"
+    state: directory
+
+- name: create screenshots directory
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/test_results/screenshots"
+    state: directory
+
+- name: create web root
+  become_user: ndoportal
+  file:
+    path: "{{ ndo_home }}/web_root"
+    state: directory
+
+- name: copy nginx base config
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+  register: nginxconf
+
+- name: make sure nginx conf.d directory exists
+  file:
+    name: /etc/nginx/conf.d
+    state: directory
+
+- name: copy ndoportal nginx config
+  template:
+    src: ndoportal.conf.j2
+    dest: /etc/nginx/conf.d/ndoportal.conf
+
+- name: set permissions for nginx lib #this should probably be changed with groups.
+  shell: chown -Rf ndoportal:ndoportal /var/lib/nginx
+- name: copy https redirect
+  template:
+    src: https_redirect.conf.j2
+    dest: /etc/nginx/conf.d/https_redirect.conf
+  register: ndoportalconf
+
+- name: make nginx start on boot
+  service:
+    name: nginx
+    enabled: yes
+
+- name: restart nginx if necessary
+  service:
+    name: nginx
+    state: restarted
+  when: (ndoportalconf.changed or nginxconf.changed)

@@ -1,0 +1,8 @@
+---
+# vars file for get_repo
+
+cli_output_file: test_results_raw.html
+cli_output_path: "{{test_results_dir}}/{{cli_output_file}}"
+test_results_dir: "{{ app_user_home }}/test_results"
+test_results_path: "{{test_results_dir}}/test_results.html"
+webex_bot_token: "{{ lookup('hashi_vault', 'secret=netdevops/data/webex_teams:token auth_method=approle role_id={{vault_role_id}} secret_id={{vault_secret_id}} validate_certs=no url={{vault_url}}')}}"

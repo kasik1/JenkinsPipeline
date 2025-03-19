@@ -1,0 +1,89 @@
+#- name: Bypass proxy if we haven't yet
+#  include_role:
+#    name: run_role_once
+#  vars:
+#    role: cigna_bypass_proxy
+
+- set_fact:
+    pg_directory: "/var/lib/pgsql/12"
+
+- set_fact:
+    pg_data_directory: "/var/lib/pgsql/12/data"
+
+- name: Download repository RPM
+  ansible.builtin.get_url:
+    url: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    dest: /tmp/pgdg-redhat-repo-latest.noarch.rpm
+
+- name: Install PostgreSQL repository RPM
+  ansible.builtin.dnf:
+    name: /tmp/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+    disable_gpg_check: true
+
+- name: Disable the built-in PostgreSQL module
+  ansible.builtin.command:
+    cmd: dnf -y module disable postgresql
+
+- name: Install postgres with dnf
+  ansible.builtin.dnf:
+    name:
+      - "postgresql12-server"
+    state: present
+
+- name: postgres init
+  command: "postgresql-12-setup initdb"
+  args:
+    creates: "{{pg_directory}}/initdb.log"
+  ignore_errors: yes
+
+- name: copy postgres user conf
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{pg_data_directory}}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+
+- name: copy postgres config..  not really a template
+  template:
+    src: postgresql.conf.j2
+    dest: "{{pg_data_directory}}/postgresql.conf"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+
+- name: start postgresql
+  systemd:
+    name: "postgresql-12"
+    state: started
+    enabled: yes
+
+- name: install global psycopg2
+  ansible.builtin.dnf:
+    name: python3-psycopg2-2.7.5
+    state: present
+
+- name: create Database
+  become_user: postgres
+  postgresql_db:
+    name: ndoportal
+
+- name: Check python version
+  debug:
+    var: ansible_python_version
+
+- name: setup Database user
+  become_user: postgres
+  postgresql_user:
+    encrypted: yes
+    db: ndoportal
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+
+- name: create database schema
+  become_user: postgres
+  postgresql_schema:
+    name: netdevops_o
+    database: ndoportal
+    owner: "{{ db_user }}"

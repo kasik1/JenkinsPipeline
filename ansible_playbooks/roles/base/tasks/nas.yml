@@ -1,0 +1,34 @@
+- name: create and change nas owner
+  file:
+    path: /opt/nas
+    mode: 0770
+    state: directory
+    group: ndologs
+    owner: root
+    recurse: yes
+- name: change ndoportal owner
+  become: yes
+  file:
+    path: /opt/nas/ndoportal
+    mode: 0770
+    state: directory
+    group: ndologs
+    owner: root
+    recurse: yes
+- name: mount nas backups
+  become: yes
+  mount:
+    fstype: nfs
+    src: "{{ nas_src }}"
+    path: /opt/nas/ndoportal
+    state: mounted
+
+- name: change backups owner
+  become: yes
+  file:
+    path: /opt/nas/ndoportal/backups
+    mode: 0770
+    state: directory
+    group: ndologs
+    owner: ndoportal
+    recurse: yes

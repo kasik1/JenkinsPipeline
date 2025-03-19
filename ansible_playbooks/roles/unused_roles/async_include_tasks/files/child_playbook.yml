@@ -1,0 +1,22 @@
+---
+- name: child
+  become: yes
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: passed json
+      debug:
+        var: passed_json
+    - set_fact:
+        passed_vars: "{{passed_json | from_yaml}}"
+    - debug:
+        var: passed_vars
+    - name: passed var keys
+      debug:
+        var: "{{passed_vars.keys()}}"
+    - set_fact:
+#        vars: "{{passed_vars.vars}}"
+        environment: "{{passed_vars.environment}}"
+#        group_names: "{{passed_vars.group_names}}"
+#        groups: "{{passed_vars.groups}}"
+        hostvars: "{{passed_vars.hostvars}}"

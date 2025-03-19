@@ -1,0 +1,28 @@
+---
+
+- name: get virtual env path
+  shell: "pipenv --venv"
+  register: venv_path_output
+  become_user: "{{ app_user }}"
+  args:
+    chdir: "{{ ndo_test_path }}"
+
+- name: put virtualenv path in variable
+  set_fact:
+    venv_path: "{{venv_path_output.stdout}}"
+
+- name: pytest
+  set_fact:
+    pytest: "{{venv_path}}/bin/pytest"
+
+- name: ansi2html
+  set_fact:
+    ansi2html: "{{venv_path}}/bin/ansi2html"
+
+- name: debug app user
+  debug:
+    var: app_user
+
+- name: debug output path
+  debug:
+    var: cli_output_path

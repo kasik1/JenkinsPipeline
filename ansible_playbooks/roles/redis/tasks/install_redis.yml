@@ -1,0 +1,40 @@
+- name: install redis
+  dnf:
+    name: redis
+- name: put redis user in ndologs group
+  user:
+    name: redis
+    groups: ndologs
+    append: yes
+- name: create and chown redis log directory
+  file:
+    path: "/var/log/redis"
+    mode: 0750
+    state: directory
+    group: ndologs
+    owner: redis
+    recurse: yes
+- name: copy redis config
+  template:
+    src: redis.conf
+    dest: /etc/redis.conf
+    group: root
+    owner: redis
+    mode: u=rw,g=r
+- name: copy sentinel config
+  template:
+    src: redis-sentinel.conf
+    dest: /etc/redis-sentinel.conf
+    group: root
+    owner: redis
+    mode: u=rw,g=r
+- name: (re)start redis
+  service:
+    name: redis
+    state: restarted
+    enabled: true
+- name: restart redis-sentinel
+  service:
+    name: redis-sentinel
+    state: stopped
+    enabled: true

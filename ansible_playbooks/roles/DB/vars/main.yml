@@ -1,0 +1,3 @@
+DB_SETTINGS: "{{ lookup('hashi_vault', 'secret=netdevops/data/development/db_settings:local auth_method=approle role_id={{vault_role_id}} secret_id={{vault_secret_id}} validate_certs=no url={{vault_url}}')}}"
+db_user: "{{ DB_SETTINGS.USER }}"
+db_password: "{{ DB_SETTINGS.PASSWORD }}"

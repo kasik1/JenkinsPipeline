@@ -1,0 +1,55 @@
+
+- name: Get Node version
+  shell: "node -v | cut -c 2- | cut -c 1-2"
+  register: current_node_version
+
+- name: Debug current Node version
+  debug:
+    var: current_node_version
+
+#- name: uninstall node if not right version
+#  dnf:
+#    name: "@nodejs"
+#    state: absent
+#  register: results
+#  when: current_node_version != "16"
+#  ignore_errors: yes
+
+- name: uninstall packages if not right version
+  shell: "yum -y remove @nodejs:{{current_node_version}}"
+  when: current_node_version != "16"
+
+- name: Disable nodejs module
+  shell: "yum -y module disable nodejs"
+  when: current_node_version != "16"
+
+#- name: Debug uninstall nodejs
+#  debug:
+#    var: results
+#  when: current_node_version != "16"
+
+#- name: Get Node curl
+#  shell: "curl -fsSL https://rpm.nodesource.com/setup_16.x | sudo -E bash -"
+
+- name:  Enable nodejs module
+  shell: "yum -y module enable nodejs:16"
+  when: current_node_version != "16"
+
+- name: install nodejs
+  shell: "dnf -y install @nodejs:16"
+
+- name: Get Nodejs new version
+  shell: "node -v"
+  register: new_current_node_version
+
+- name: get nodejs new version
+  debug:
+    var: new_current_node_version
+
+- name: install global angular packages
+  npm:
+    name: "{{item}}"
+    global: yes
+  with_items:
+    - "@angular/cli"
+    - "increase-memory-limit"

@@ -1,0 +1,12 @@
+{
+  "PolicyDN": "{{ certs_bucket.certs_policy }}",
+  "ObjectName": "{{ cert_fqdn | lower }}",
+  "Subject": "{{ cert_fqdn | lower }}",
+  "SubjectAltNames": [
+    { "Type": 2, "Name": "{{ cert_fqdn | lower }}" }
+  ],
+{% if 'Public' in certs_bucket.certs_policy %}
+  "CASpecificAttributes": [{ "Name": "Validity Period", "Value": "365" }],
+{% endif %}
+  "SetWorkToDo": false
+}

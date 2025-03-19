@@ -1,0 +1,46 @@
+#- name: install global pip from artifactory
+#  command: easy_install-3 --index-url http://repo.sys.cigna.com/artifactory/api/pypi/pypi-repos/simple  pip
+#  args:
+#    creates: /usr/local/bin/pip
+
+- name: install python39
+  dnf:
+    name: "python39"
+    state: latest
+#- name: upgrade setuptools - leave this because things break sometimes
+#  shell: python3.9 -m pip install --upgrade setuptools
+#- name: upgrade pip - leave this because things break sometimes
+#  shell: python3.9 -m pip install --upgrade pip
+##
+#- name: install pipenv with shell
+#  shell: pip3.9 install --upgrade pipenv
+
+#- name: install global pip from artifactory
+#  command: easy_install-3 --index-url http://repo.sys.cigna.com/artifactory/api/pypi/pypi-repos/simple  pip==20.3.4
+#  args:
+#    creates: /usr/lib/python2.7/site-packages/pip-20.3.4-py2.7.egg/pip
+#- name: remove pyOpenSSL via yum
+#  yum:
+#    name: pyOpenSSL
+#    state: removed
+#- name: remove python2-cryptography from yum if its there
+#  yum:
+#    name: python2-cryptography
+#    state: removed
+#  register: remove_pycrypto
+#- name: remove cryptography from global pip
+#  pip:
+#    state: absent
+#    name: cryptography
+#  when: "{{ remove_pycrypto.changed}}"
+#- name: remove pyOpenSSL via yum
+#  yum:
+#    name: pyOpenSSL
+#    state: removed
+#  register: remove_pyopenssl
+#- name: pip install/upgrade global packages
+#  pip:
+#    state: latest
+#    name:
+#    - virtualenv
+#    - pyopenssl

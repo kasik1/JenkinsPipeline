@@ -1,0 +1,19 @@
+- name: set recovery script directory
+  set_fact:
+    recovery_script_dir: "{{ django_path }}/utils"
+
+- name: copy portal backup script to django_backend/utils
+  template:
+    src: backup_portal.sh.j2
+    dest: "{{ recovery_script_dir }}/backup_portal.sh"
+    owner: ndoportal
+    group: ndologs
+    mode: 0770
+
+- name: copy portal recovery script to django_backend/utils
+  template:
+    src: recovery_portal.sh.j2
+    dest: "{{ recovery_script_dir }}/recovery_portal.sh"
+    owner: ndoportal
+    group: ndologs
+    mode: 0770

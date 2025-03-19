@@ -1,0 +1,17 @@
+- name: Testing and Cleanup
+  become: yes
+  become_method: community.general.sudosu
+  hosts: all
+  gather_facts: yes
+  pre_tasks:
+    - name: Import Vault Creds
+      include_vars: vault.yml
+  tasks:
+    - name: Setup Tests
+      include_role:
+        name: automation_testing
+        tasks_from: setup
+    - name: run smoke tests
+      include_role:
+        name: automation_testing
+        tasks_from: smoke_tests

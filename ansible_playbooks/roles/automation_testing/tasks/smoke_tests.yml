@@ -1,0 +1,95 @@
+---
+- name: Collect vars for testing
+  include_tasks: collect_vars.yml
+
+- name: Run Load Test Data Script
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "pipenv run ./manage.py ndo_load_test_data"
+  args:
+    chdir: "{{ ndo_django_path }}"
+  when: git_branch != "master"
+
+- name: Run Unit testing test cases
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "pipenv run ./manage.py test -v 2 &> {{test_results_dir}}/unit_testing_raw.txt"
+  args:
+    chdir: "{{ ndo_django_path }}"
+  register: unit_test_output
+
+- name: Create ansi html for Unit testing raw output
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "cat unit_testing_raw.txt | {{ ansi2html }} > unit_testing_raw.html"
+  args:
+    chdir: "{{ test_results_dir }}"
+
+- name: Generate Unit Test Results
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  ansible.builtin.script: 'generate_unit_test_report.py "{{test_results_dir}}/unit_testing_raw.txt" "{{test_results_dir}}/unit_testing.html"'
+  args:
+    executable: python3
+
+- name: Send webex message for unit testing
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  ansible.builtin.script: 'webex_unit_test_message.py "{{ webex_bot_token }}" "{{ webex_message_id }}" "{{test_results_dir}}/unit_testing_raw.txt"'
+  args:
+    executable: python3
+
+#- name: fail playbook if Unit tests failed
+#  fail:
+#    msg: Unit tests failed
+#  when: unit_test_output.failed
+
+- name: Put file name in variable
+  set_fact:
+    test_output_file: "smoke_testing.html"
+
+- name: Run Smoke Testing
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "set -o pipefail && {{pytest}} --reruns 1 --reruns-delay 30 -n 5 --dist loadscope --workspace={{ jenkins_server_workspace }} --build={{ build }} --branch={{ git_branch }} --html={{test_results_dir}}/{{test_output_file}} --junitxml={{test_results_dir}}/smoke_testing.xml --self-contained-html --mode=grid -m smoke > {{test_results_dir}}/smoke_testing_raw.txt"
+  args:
+    chdir: "{{ app_user_home }}/{{ app_name }}/tests/test_cases"
+  register: smoke_test_output
+
+- name: Store smoke testing xml report
+  ansible.builtin.fetch:
+    src: "{{test_results_dir}}/smoke_testing.xml"
+    dest: "{{jenkins_server_workspace}}/target/test-reports/smoke_testing.xml"
+    flat: true
+
+- name: Create ansi html for smoke testing raw output
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  shell: "cat smoke_testing_raw.txt | {{ ansi2html }} > smoke_testing_raw.html"
+  args:
+    chdir: "{{ test_results_dir }}"
+
+- name: Send webex message for smoke tests
+  become_user: "{{ app_user }}"
+  become: yes
+  ignore_errors: yes
+  ansible.builtin.script: 'webex_test_message.py "{{ webex_bot_token }}" "{{ webex_message_id }}" "{{test_results_dir}}/smoke_testing_raw.txt"'
+  args:
+    executable: python3
+
+- name: fail playbook if Smoke tests failed
+  fail:
+    msg: Smoke tests failed
+  when: smoke_test_output.failed
+
+- name: run functional tests if not master
+  include_tasks: functional_tests.yml
+  when: git_branch != "master"
+

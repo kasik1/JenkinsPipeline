@@ -1,0 +1,10 @@
+LoadModule ssl_module modules/mod_ssl.so
+
+Listen 443
+<VirtualHost *:443>
+    DocumentRoot "/var/www/html/"
+    ServerName {{ inventory_hostname }}
+    SSLEngine on
+    SSLCertificateFile "{{ crt_path }}"
+    SSLCertificateKeyFile "{{ privatekey_path }}"
+</VirtualHost>

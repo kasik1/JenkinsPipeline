@@ -1,0 +1,4 @@
+---
+redis_prod_password: "{{ lookup('hashi_vault', 'secret=netdevops/data/production/redis_password:ndo_value auth_method=approle role_id={{vault_role_id}} secret_id={{vault_secret_id}} validate_certs=no url={{vault_url}}')}}"
+redis_dev_password: "{{ lookup('hashi_vault', 'secret=netdevops/data/development/redis_password:ndo_value auth_method=approle role_id={{vault_role_id}} secret_id={{vault_secret_id}} validate_certs=no url={{vault_url}}')}}"
+redis_password: "{% if git_branch == 'master' %}{{ redis_prod_password }}{% else %}{{ redis_dev_password }}{% endif %}"

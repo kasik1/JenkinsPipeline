@@ -1,0 +1,98 @@
+---
+- set_fact:
+    path_commits: {}
+    existing_path_commits: no
+
+- name: Get the existing json
+  shell: "cat {{task_commits_path}}"
+  register: existing_file
+  ignore_errors: yes
+
+- debug:
+    var: existing_file
+
+- name: save the Json data to a Variable as a Fact
+  set_fact:
+    existing_path_commits: "{{ existing_file.stdout | from_json }}"
+  ignore_errors: yes
+
+- name: debug existing_path_commits
+  debug:
+    var: existing_path_commits
+
+- name: make sure path commit directory exists
+  file:
+    name: "{{path_commits_dir}}"
+    state: directory
+
+- name: Debug commit_path
+  debug:
+    var: commit_path
+
+- name: debug commit_paths
+  debug:
+    var: commit_paths
+
+- set_fact:
+    commit_paths: ["{{commit_path}}"]
+  when: commit_path and not commit_paths
+
+- name: commit_paths after
+  debug:
+    var: commit_paths
+
+- name: gather path_commits
+  command: "git log  -1  --format=%H  {{item}}"
+  args:
+    chdir: "{{repo_path}}"
+  with_items: "{{commit_paths}}"
+  register: results
+  ignore_errors: yes
+  become_user: ndoportal
+
+- name: debug results
+  debug:
+    var: results
+
+- name: set_hashes
+  set_fact:
+    path_commits: '{{path_commits|combine({item.invocation.module_args.chdir + item.cmd[-1]: item.stdout})}}'
+  with_items:
+    "{{results.results}}"
+  ignore_errors: yes
+
+- name: debug path_commits
+  debug:
+    var: path_commits
+  ignore_errors: yes
+
+- name: set changed
+  set_fact:
+    path_changed_since_task: "{{ existing_path_commits  != path_commits}}"
+  ignore_errors: yes
+
+- name: debug path_changed_since_task
+  debug:
+    var: path_changed_since_task
+
+- name: debug task_commits_path
+  debug:
+    var: task_commits_path
+
+- name: include tasks if changed and no tasks_role set
+  include_tasks: "{{tasks_name}}"
+  when: path_changed_since_task  and not tasks_role
+
+- name: include tasks from role when changed
+  include_role:
+    name: "{{tasks_role}}"
+    tasks_from: "{{tasks_name}}"
+    public: "{{role_public}}"
+  when: path_changed_since_task  and tasks_role
+
+- name: save_commits
+  template:
+    src: task_path_commits.json.j2
+    dest: "{{task_commits_path}}"
+  when: path_changed_since_task
+  ignore_errors: yes

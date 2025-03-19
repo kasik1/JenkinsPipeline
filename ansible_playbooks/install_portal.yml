@@ -1,0 +1,220 @@
+- name: place canary
+  become: yes
+  become_method: community.general.sudosu
+  gather_facts: yes
+  hosts: all
+
+#  roles:
+#    - geerlingguy.repo-epel
+  tasks:
+    - name: create canary file var
+      set_fact:
+        canary_file_path: ~/ndoportal.ansible.canary
+    - name: check if canary file exists
+      stat:
+        path: "{{canary_file_path}}"
+      register: canary_file
+    - name: debug canary_File
+      debug:
+        var: canary_file
+    - name: set run_all to yes if canary file exsits
+      set_fact:
+        run_all: "{{ canary_file.stat.exists }}"
+    - name: debug run_all
+      debug:
+        var: run_all
+    - name: touch canary file
+      file:
+        path: "{{canary_file_path}}"
+        state: touch
+        mode: 0777
+    - name: check if canary file was created, for debugging
+      stat:
+        path: "{{canary_file_path}}"
+      register: canary_file_created
+    - name: debug canary_file_created
+      debug:
+        var: canary_file_created
+
+- name: base
+  become: yes
+  become_method: community.general.sudosu
+  hosts: all
+  gather_facts: yes
+  roles:
+    - base
+  vars:
+    app_user: ndoportal
+    app_name: ndoportal
+
+- name: Redis
+  hosts: all # todo: change to REDIS
+  become: yes
+  become_method: community.general.sudosu
+  gather_facts: yes
+  pre_tasks:
+    - name: Import Vault Creds
+      include_vars: vault.yml
+#    - name: choose redis master
+#      set_fact:
+#        redis_master_hostname: "{{ groups['REDIS'][0] }}"
+#    - name: lookup redis master ip
+#      shell: "host {{redis_master_hostname}} | rev | cut -d\" \" -f1 | rev"
+#      register: redis_dns_lookup_output
+#    - name: put redis master ip in variable
+#      set_fact:
+#        redis_master_ip: "{{redis_dns_lookup_output.stdout}}"
+#    - name: debugging redis master info
+#      debug:
+#        msg: "hostname: {{redis_master_hostname}} ip: {{redis_master_ip}}"
+  roles:
+    - redis
+
+
+- name: Memcached
+  hosts: all
+  become: yes
+  become_method: community.general.sudosu
+  gather_facts: yes
+  roles:
+    - memcached
+
+- name: DB
+  hosts: DB
+  become: yes
+  become_method: community.general.sudosu
+  gather_facts: yes
+  pre_tasks:
+    - name: Import Vault Creds
+      include_vars: vault.yml
+  roles:
+    - DB
+
+- name: Install certificates
+  hosts: all
+  roles:
+    - venafi_certificates
+  vars:
+    installation_name: "ndoportal"
+    installation_path: "/etc/ssl"
+
+- name: Deploy Applications
+  hosts: APP
+  become: yes
+  become_method: community.general.sudosu
+#  become_exe: "sudo -H -S -n  sudo"
+  gather_facts: yes
+  vars:
+    app_user: ndoportal
+    app_name: ndoportal
+  pre_tasks:
+    - name: Import Vault Creds
+      include_vars: vault.yml
+  tasks:
+    - name: app_base
+      include_role:
+        name: app_base
+        public: yes
+    - name: angular install
+      include_role:
+        name: angular_app
+        tasks_from: install_angular
+
+    # - name: start angular deploy
+    #   include_role:
+    #     name: path_commit
+    #     public: yes
+    #   vars:
+    #     commit_path: django_backend/
+    #     tasks_name: deploy_angular_app
+    #     tasks_role: angular_app
+    #     role_public: yes
+    #     repo_path: "/home/{{app_user}}/{{app_name}}" # this needs to change but is ok for now.
+    - name: start angular deploy
+      include_role:
+        name: angular_app
+        tasks_from: deploy_angular_app
+        public: yes
+    - name: deploy django_app
+      include_role:
+        name: django_app
+        public: yes
+    - name: restart supervisor for now until we have the permissions correct
+      service:
+        name: supervisord
+        state: restarted #should only restart supervisor if needed, but always restart the app.
+        enabled: yes
+    - name: make sure nginx is restarted, until we register all possible config changes
+      service:
+        name: nginx
+        state: restarted
+    # - name: wait for angular
+    #   include_role:
+    #     name: angular_app
+    #     tasks_from: wait_for_deploy.yml
+    #     public: yes
+
+- name: Testing and Cleanup
+  become: yes
+  become_method: community.general.sudosu
+  hosts: all
+  gather_facts: yes
+  pre_tasks:
+    - name: Import Vault Creds
+      include_vars: vault.yml
+  tasks:
+    - name: test angular static file
+      uri:
+        url: https://127.0.0.1/favicon.ico
+        validate_certs: no
+    - name: test django admin
+      uri:
+        url: https://127.0.0.1/admin/
+        validate_certs: no
+    - name: test django static file
+      uri:
+        url: https://127.0.0.1/static/jquery-3.0.0.min.js
+        validate_certs: no
+    - name: test swagger backend is not failing
+      uri:
+        body_format: json
+        url: https://127.0.0.1/swagger/?format=openapi
+        validate_certs: no
+        return_content: yes
+      register: swagger_backend_result
+    - name: fail if swagger backend result is not expected json
+      assert:
+        that:
+          - swagger_backend_result.json.info.title == "NetDevOps"
+    - name: get supervisor status
+      command: supervisorctl status
+      register: supervisor_status
+    - name: count number of supervisor processes
+      shell: "supervisorctl status  | wc -l"
+      register: supervisor_processes
+    - name: count number of running supervisor processes
+      shell: "supervisorctl status  | grep RUNNING | wc -l"
+      register: supervisor_running_processes
+    - name: Show supervisor status
+      debug:
+        var: supervisor_status.stdout_lines
+    - debug:
+        var: supervisor_processes
+    - debug:
+        var: supervisor_running_processes
+    - name: fail if there are supervisor processes not RUNNING
+      assert:
+        that:
+          - supervisor_processes.stdout == supervisor_running_processes.stdout
+#    - name: Setup Tests
+#      include_role:
+#        name: automation_testing
+#        tasks_from: setup
+#    - name: run smoke tests
+#      include_role:
+#        name: automation_testing
+#        tasks_from: smoke_tests
+    - name: delete canary file #this should always run last
+      file:
+        path: "{{canary_file_path}}"
+        state: absent

@@ -1,0 +1,20 @@
+---
+- debug:
+    msg: Skipping Proxy Bypass
+#- name: GET Url to bypass proxy
+#  uri:
+#    url: http://wdccipmon01.internal.cigna.com/ticket/index.php
+#  async: 1000
+#  poll: 0
+#- name: Wait for access to Internet
+#  uri:
+#    url: https://raw.githubusercontent.com/requests/requests/master/README.md
+#    status_code: 200
+#    timeout: 5
+#  register: external_status
+#  # Keep trying for 5 mins in 5 sec intervals
+#  retries: 60
+#  delay: 5
+#  until: >
+#     'status' in external_status and
+#     external_status['status'] == 200

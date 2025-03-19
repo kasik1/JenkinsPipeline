@@ -1,0 +1,5 @@
+- name: Execute the recovery script
+  become_user: ndoportal
+  command: sh recovery_portal.sh
+  args:
+    chdir: "{{ recovery_script_dir }}"

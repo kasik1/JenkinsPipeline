@@ -1,0 +1,44 @@
+---
+- name: Request retirement of {{ cert_fqdn }}
+  uri:
+    url: "{{ venafi.url }}/Config/RenameObject"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body:
+      ObjectDN: "{{ cert_bucket }}\\{{ cert_fqdn }}"
+      NewObjectDN: "{{ cert_bucket_deprecated | default(cert_dn.web_it.deprecated) }}\\{{ cert_fqdn }}"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: retire_request
+
+- name: Return the output of the cert retirement
+  debug:
+    var: retire_request
+    verbosity: 1
+
+- name: Retire the license of {{ cert_fqdn }}
+  uri:
+    url: "{{ venafi.url }}/Config/Write"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body:
+      ObjectDN: "{{ cert_bucket_deprecated | default(cert_dn.web_it.deprecated) }}\\{{ cert_fqdn }}"
+      AttributeName: "Disabled"
+      Values:
+        - "1"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: license_retire
+
+- name: Return the response of the license retirement
+  debug:
+    var: license_retire
+    verbosity: 1

@@ -1,0 +1,68 @@
+---
+# Setup tasks for testing
+# I think we should wait to call the part to install python 3 until now.
+- name: collect app users home directory
+  become_user: "{{app_user}}"
+  shell: "echo $HOME"
+  register: echo_home_output
+
+- name: put app users home directory in a variable
+  set_fact:
+    app_user_home: "{{ echo_home_output.stdout }}"
+
+- name: set target python version
+  set_fact:
+    python_target_version: "3.10.2"
+
+- name: install python if necessary
+  include_role:
+    name: install_python_from_source
+
+- name: find virtualenv python
+  become_user: ndoportal
+  command: pipenv --py
+  register: test_venv_python_output
+  ignore_errors: yes
+  args:
+    chdir: "{{ ndo_test_path }}"
+
+- name: debug virtual env python path
+  debug:
+    var: test_venv_python_output
+
+- name: check python version in virtual environment
+  become_user: ndoportal
+  shell: "{{ test_venv_python_output.stdout }} --version | cut -d' ' -f2"
+  args:
+    chdir: "{{ ndo_test_path }}"
+  register: test_venv_python_version_output
+  ignore_errors: yes
+  when: test_venv_python_output.stdout is defined
+
+- debug:
+    var: test_venv_python_version_output
+  when: test_venv_python_version_output.stdout is defined
+
+- name: set virtualenv python version
+  set_fact:
+    test_venv_python_version: "{{ test_venv_python_version_output.stdout }}"
+  when: test_venv_python_version_output is defined
+
+- name: debug virtualenv python version
+  debug:
+    var: test_venv_python_version
+
+- name: delete virtualenv if it exists and does not have the correct version of python
+  become_user: ndoportal
+  command: pipenv --rm
+  when: (test_venv_python_output.stdout is defined) and
+        (test_venv_python_output.stdout != '') and
+        (test_venv_python_version != python_target_version)
+  args:
+    chdir: "{{ ndo_test_path }}"
+
+- name: make sure all packages match pipfile.lock, and create virtual env if necessary
+  become_user: ndoportal
+  command: pipenv sync
+  args:
+    chdir: "{{ ndo_test_path }}"

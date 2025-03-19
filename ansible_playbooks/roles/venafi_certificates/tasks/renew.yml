@@ -1,0 +1,45 @@
+---
+
+- name: Get certificate properties before renewal
+  include_tasks: cert_info.yml
+
+- name: Request renewal for {{ cert_fqdn }}
+  uri:
+    url: "{{ venafi.url }}/Certificates/Renew"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body:
+      CertificateDN: '{{ certs_bucket.certs_policy }}\{{ cert_fqdn }}'
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: renew_request
+
+- name: Gather renewed state for {{ cert_fqdn }} in {{ certs_bucket.certs_policy }}
+  uri:
+    url: "{{ cert_info.url }}"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body_format: json
+    method: GET
+    validate_certs: false
+    return_content: yes
+  register: cert_after
+  until:
+    - cert_info.json.CertificateDetails.ValidTo != cert_after.json.CertificateDetails.ValidTo
+    - cert_info.json.CertificateDetails.Serial != cert_after.json.CertificateDetails.Serial
+  retries: 20
+  delay: 10
+
+- name: If serial number is undefined or blank, fail the process
+  assert:
+    that:
+      - cert_after.json.CertificateDetails.Serial is defined
+      - cert_after.json.CertificateDetails.Serial | string != "None"
+    fail_msg: "Something went wrong with the renewal, check Venafi web UI further detail."
+    success_msg: "Renew appears successful, proceeding."

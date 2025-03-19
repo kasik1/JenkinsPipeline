@@ -1,0 +1,11 @@
+[program:gunicorn_ndoportal]
+command={{ virtual_env }}/bin/gunicorn netdevops.wsgi:application -c {{ ndo_home }}/ndoportal/django_backend/netdevops/gunicorn_config.py
+directory={{ ndo_home }}/ndoportal/django_backend/
+user=ndoportal
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile= /var/log/supervisor/ndoportal_gunicorn.out.log
+stderr_logfile= /var/log/supervisor/ndoportal_gunicorn.err.log
+priority=1000
+timeout=3000

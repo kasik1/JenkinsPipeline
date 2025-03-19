@@ -1,0 +1,38 @@
+#!/bin/env bash
+#===================================================================================
+#
+# FILE: recovery_portal.sh
+#
+#
+# DESCRIPTION: automate recovering local portal DB backups
+#
+# OPTIONS: N/A
+# REQUIREMENTS: Already provided by Portal
+# NOTES:
+# AUTHOR: Claudio Vazquez <ClaudioVazquez.Villanueva@cigna.com>
+# COMPANY: Cigna Healthcare
+# VERSION: 1.0
+# CREATED: 06/22/2020
+# REVISION:
+#===================================================================================
+
+# Uncomment next two lines for debugging
+# Hit ENTER key to step through the script
+#set -x
+#trap read debug
+
+BACKUPDIR=/opt/nas/ndoportal/backups
+
+/bin/logger -t [RECOVERYINFO] "$0 - Portal recovery started: `date` "
+FILE=$(cd $BACKUPDIR && ls -t | head -n 1)
+
+$(cd /home/ndoportal/ndoportal/django_backend && pipenv run ./manage.py loaddata $BACKUPDIR/$FILE --verbosity=0)
+if [ $? != 0 ]
+then
+    /bin/logger -t [RECOVERYERROR] "$0 - $? - RECOVERY FAILED!!"
+else
+    /bin/logger -t [RECOVERYINFO] "$0 - RECOVERY SUCCESS!!"
+fi
+
+/bin/logger -t [RECOVERYINFO] "$0 - Portal recovery ended: `date` "
+

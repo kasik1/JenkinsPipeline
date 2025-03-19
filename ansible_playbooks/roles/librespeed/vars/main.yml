@@ -1,0 +1,7 @@
+---
+# vars file for librespeed
+librespeed_backends:
+  - name: WDC Server
+    url: https://cvlappxv20021.silver.com/
+  - name: ADC Server
+    url: https://cvlappxd20461.silver.com/

@@ -1,0 +1,123 @@
+---
+- name: install apache and php
+  dnf:
+    state: removed
+    name:
+      - python3-cryptography
+- name: install apache and php
+  dnf:
+    state: latest
+    name:
+      - httpd
+      - php
+      - mod_ssl
+- name: install global pip from artifactory
+  command: easy_install-3 --index-url http://repo.sys.cigna.com/artifactory/api/pypi/pypi-repos/simple  pip
+  args:
+    creates: /usr/local/bin/pip
+- name: pip install/upgrade global packages
+  pip:
+    state: latest
+    name:
+    - pip
+    - setuptools
+- name: pip install/upgrade global packages
+  pip:
+    state: latest
+    name:
+    - virtualenv
+    - pyopenssl
+- name: create ssl directories
+  file:
+    path: /etc/ssl/csr/
+    state: directory
+    mode: 0644
+- name: create ssl directories
+  file:
+    path: /etc/ssl/private/
+    state: directory
+    mode: 0644
+- set_fact:
+    privatekey_path: /etc/ssl/private/librespeed.pem
+    crt_path: /etc/ssl/librespeed.crt
+    cert_file: "cert.pfx"
+
+    combined_path: "/root/combined.pem"
+    cert_password: !vault |
+      $ANSIBLE_VAULT;1.1;AES256
+      62316636333261323530396634306533353738393830356330376361656464323765653039306664
+      3565653633373833623961353063366434313034616137650a626662626132396236313335666531
+      61356637303862333864626534316565373130613231353965336461303336613438396364616230
+      3433633634653539630a303163343531653732326438303734376233643764633665326136653034
+      66663537383762326663663030613133333962356265353039333935366433393138
+- set_fact:
+    cert_path: "/root/{{cert_file}}"
+- name: export cert and pem
+  openssl_pkcs12:
+    action: parse
+    src: "{{cert_path}}"
+    path: "{{combined_path}}"
+    passphrase: "{{cert_password}}" #this will be a problem if we have certs with different passwords
+    privatekey_passphrase: "{{cert_password}}" #this will be a problem if we have certs with different passwords
+    state: present
+    mode: 0600
+    force: True
+- name: copy keyfile to where it belongs
+  copy:
+    remote_src: yes
+    src: "{{combined_path}}"
+    dest: "{{privatekey_path}}"
+- name: 'delete cert from key file'
+  blockinfile:
+    path: "{{privatekey_path}}"
+    marker: "-----{mark} CERTIFICATE-----"
+    content: ""
+- name: copy crt file to where it belongs
+  copy:
+    remote_src: yes
+    src: "{{combined_path}}"
+    dest: "{{crt_path}}"
+- name: 'delete key from crt file'
+  blockinfile:
+    path: "{{crt_path}}"
+    marker: "-----{mark} PRIVATE KEY-----"
+    content: ""
+- name: "delete cert files"
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{combined_path}}"
+
+- name: delete default apache configs
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/httpd/conf.d/ssl.conf
+- name: setup apache config
+  template:
+    src: librespeed.apache.conf.j2
+    dest: "/etc/httpd/conf.d/librespeed.conf"
+- name: clone repo
+  git:
+    repo: https://github.com/librespeed/speedtest.git
+    update: yes
+    force: yes
+    dest: /root/librespeed
+  environment:
+    - GIT_SSL_NO_VERIFY: "true"
+- name: copy files to http root
+  synchronize:
+    src: /root/librespeed/backend
+    dest: /var/www/html/
+  delegate_to: "{{ inventory_hostname }}"
+- name: set owner
+  file:
+    dest: /var/www/html
+    owner: apache
+    recurse: yes
+- name: restart apache
+  service:
+    name: httpd
+    state: restarted

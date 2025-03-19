@@ -1,0 +1,33 @@
+- name: Extract private key from certificate
+  shell: "openssl pkcs8 -in {{cert_temp}}/{{cert_fqdn}}.crt -out {{ privatekey_path }} -passin file:{{ cert_temp }}/{{ cert_fqdn }}_crt_pass.txt"
+  changed_when: ansiblelint_ignore is defined
+  become: yes
+
+- name: Move new certificate to installation path
+  shell: |
+    mv -f "{{ cert_temp }}/{{ cert_fqdn }}.crt" "{{ crt_path }}"
+  become: yes
+
+#- name: Change cert ownership/group
+#  file:
+#    path: "{{ crt_path }}"
+#    owner: "{{ cert_user }}"
+#    group: "{{ cert_group }}"
+#    mode: "0640"
+#
+#- name: Change private key ownership/group
+#  file:
+#    path: "{{ privatekey_path }}.pem"
+#    owner: "{{ cert_user }}"
+#    group: "{{ cert_group }}"
+#    mode: "0640"
+
+#- name: Restart Nginx
+#  service:
+#    state: restarted
+#    name: nginx
+#  become: yes
+
+- name: Certificate applied
+  set_fact:
+    cert_applied: True

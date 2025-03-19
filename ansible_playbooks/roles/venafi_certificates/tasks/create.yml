@@ -1,0 +1,68 @@
+---
+- name: Request certificate for {{ cert_fqdn }}
+  uri:
+    url: "{{ venafi.url }}/Certificates/Request"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body: "{{ lookup('template', 'request_payload.json.j2') }}"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: cert_request
+
+- name: Set custom fields for certificates
+  uri:
+    url: "{{ venafi.url }}/Metadata/Set"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body: "{{ lookup('template', 'custom_fields.json.j2') }}"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: custom_fields
+
+- name: Show output of custom field creation
+  debug:
+    var: custom_fields
+    verbosity: 1
+
+- name: Show output of custom field creation
+  debug:
+    var: custom_fields
+    verbosity: 1
+
+- name: Fail if the response is unexpected
+  fail:
+    msg: Something went wrong with defining the custom fields.
+  when: not custom_fields.json.Result == 0
+
+- name: Begin the certificate workflow
+  uri:
+    url: "{{ venafi.url }}/Config/Write"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Venafi-Api-Key: "{{ venafi_api_key.json.APIKey }}"
+    body:
+      ObjectDN: "{{ certs_bucket.certs_policy }}\\{{ cert_fqdn }}"
+      AttributeName: "Work To Do"
+      Values: ["1"]
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+  register: start_workflow
+
+- name: Fail if the response is unexpected
+  fail:
+    msg: Something went wrong with starting the certificate workflow
+  when: start_workflow.json.Result != 1
+
+- set_fact:
+    cert_created: True

@@ -1,0 +1,54 @@
+---
+# tasks file for running Veracode scans
+
+- name: collect app users home directory
+  become_user: "{{ app_user }}"
+  shell: "echo $HOME"
+  become: yes
+  register: echo_home_output
+
+- name: put app users home directory in a variable
+  set_fact:
+    app_user_home: "{{ echo_home_output.stdout }}"
+
+- name: location of code repo
+  become_user: "{{ app_user }}"
+  become: yes
+  set_fact:
+    code_repo_dir: "{{ app_user_home }}/{{ code_repo_name }}"
+
+- name: veracode setup script and veracode zip files
+  become_user: "{{ app_user }}"
+  become: yes
+  script: veracode_setup.sh
+  args:
+    chdir: "{{ code_repo_dir }}"
+
+- name: load veracode token
+  include_vars: veracode.yml
+
+- name: Execute Veracode backend scan through Shell script
+  become_user: "{{ app_user }}"
+  become: yes
+  script: 'veracode_backend.sh "{{ veracode }}" "{{ git_branch }}"'
+  args:
+    chdir: "{{ code_repo_dir }}"
+  register: backend_log
+  ignore_errors: yes
+
+- name: Execute Veracode frontend scan through Shell script
+  become_user: "{{ app_user }}"
+  become: yes
+  script: 'veracode_frontend.sh "{{ veracode }}" "{{ git_branch }}"'
+  args:
+    chdir: "{{ code_repo_dir }}"
+  register: frontend_log
+  ignore_errors: yes
+
+- name: Copy the scan results to shared directory
+  become_user: "{{ app_user }}"
+  become: yes
+  shell: cp veracode_backend_results.txt veracode_frontend_results.txt ~/test_results/
+  args:
+    chdir: "{{ code_repo_dir }}"
+  

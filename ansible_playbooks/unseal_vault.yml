@@ -1,0 +1,13 @@
+---
+- name: Checking and Unsealing Vault
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  tasks:
+    - name: Run Python Script Unseal the vault
+      script: unseal_vault.py {{ unseal_keys }} {{ hosts }} {{ webex_token }} {{ project }}
+      register: output
+
+    - debug:
+        var: output

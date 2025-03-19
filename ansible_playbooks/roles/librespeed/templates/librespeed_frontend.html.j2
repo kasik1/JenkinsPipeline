@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="shortcut icon" href="favicon.ico">
+<meta charset="UTF-8" />
+<img src="Cigna_Logo.png" alt="Cigna Logo" width="167" height="64" ></img>
+<br>
+<title>US Medical Speedtest</title>
+<script type="text/javascript" src="speedtest.js"></script>
+<script type="text/javascript" src="librespeed_config.js"></script>
+<link rel="stylesheet" type="text/css" href="librespeed_styles.css" />
+</head>
+<body>
+<body onload="initServers()">
+<h1>Ashburn & Windsor Data Center Speed Test</h1>
+<div id="loading" class="visible">
+</div>
+<div id="testWrapper" class="hidden">
+	<div id="startStopBtn" onclick="startStop()"></div><br/>
+	<br>
+	<div id="serverArea">
+		Server: <select id="server" onchange="s.setSelectedServer(SPEEDTEST_SERVERS[this.value])"></select>
+	</div>
+	<div id="test">
+		<div class="testGroup">
+            <div class="testArea2">
+				<div class="testName">Ping</div>
+				<div id="pingText" class="meterText" style="color:#AA6060"></div>
+				<div class="unit">ms</div>
+			</div>
+			<div class="testArea2">
+				<div class="testName">Jitter</div>
+				<div id="jitText" class="meterText" style="color:#AA6060"></div>
+				<div class="unit">ms</div>
+			</div>
+		</div>
+		<div class="testGroup">
+			<div class="testArea">
+				<div class="testName">Download</div>
+				<canvas id="dlMeter" class="meter"></canvas>
+				<div id="dlText" class="meterText"></div>
+				<div class="unit">Mbps</div>
+			</div>
+			<div class="testArea">
+				<div class="testName">Upload</div>
+				<canvas id="ulMeter" class="meter"></canvas>
+				<div id="ulText" class="meterText"></div>
+				<div class="unit">Mbps</div>
+			</div>
+		</div>
+		<div id="ipArea">
+			<span id="ip"></span>
+		</div>
+		<div id="shareArea" style="display:none">
+			<h3>Share results</h3>
+			<p>Test ID: <span id="testId"></span></p>
+			<input type="text" value="" id="resultsURL" readonly="readonly" onclick="this.select();this.focus();this.select();document.execCommand('copy');alert('Link copied')"/>
+			<img src="" id="resultsImg" />
+		</div>
+	</div>
+</div>
+<a href="https://netdevopsportal.sys.cigna.com/">NetDevOps Portal</a>
+</body>
+</html>

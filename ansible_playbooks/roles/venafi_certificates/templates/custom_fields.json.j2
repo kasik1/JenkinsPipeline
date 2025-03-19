@@ -1,0 +1,29 @@
+{
+  "DN": "{{ certs_bucket.certs_policy }}\\{{ cert_fqdn }}",
+  "GuidData": [
+    {
+      "ItemGuid": "{8b4bb893-bcfd-4845-941e-5a98b2ac746b}",
+      "List": ["{{ hpsm_change | default('undefined_cm') }}"]
+    },
+    {
+      "ItemGuid": "{a348c4a7-b840-4672-92a3-c0b0976d52e1}",
+      "List": ["{{ requester_id | default('undefined_requester') }}"]
+    },
+    {
+      "ItemGuid": "{8c7b5cd4-e142-4da9-bab1-bac8276bd8da}",
+      "List": ["{{ checkout_id | default('undefined_checkout') }}"]
+    },
+    {
+      "ItemGuid": "{a448356e-3b2e-4c67-a010-2b68c5d3e7f1}",
+      "List": ["{{ cert_purpose | default('undefined_purpose') }}"]
+    },
+    {
+      "ItemGuid": "{643535c2-273a-4ca1-9606-6fb32fdaa5f5}",
+      "List": ["{{ cert_support_contact | default('undefined_support_contact') }}"]
+    },
+    {
+      "ItemGuid": "{e4315bbd-935e-40db-9972-2ee62fcc2667}",
+      "List": ["{{ cert_transaction_id | default(ansible_date_time.iso8601) }}"]
+    }
+  ]
+}

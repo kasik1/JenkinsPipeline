@@ -1,0 +1,15 @@
+- name: copy postgres user conf
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{pg_data_directory}}/pg_hba.conf"
+  register: postgres_user_conf
+- name: copy postgres config..  not really a template
+  template:
+    src: postgresql.conf.j2
+    dest: "{{pg_data_directory}}/postgresql.conf"
+  register: postgres_conf
+- name: restart postgres because of config change
+  systemd:
+    name: "postgresql-{{pg_current_major_version}}"
+    state: restarted
+    when: postgres_user_conf.changed or postgres_conf.changed

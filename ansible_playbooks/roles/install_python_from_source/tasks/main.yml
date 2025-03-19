@@ -1,0 +1,40 @@
+---
+- name: debug python binary
+  debug:
+    var: python_binary_name
+- name: debug python version
+  debug:
+    var: python_version
+- name: debug link paths
+  debug:
+    var: python_link_paths
+- name: debug link commands
+  debug:
+    var: python_link_commands
+- name: "check if {{python_version}} is installed"
+  command: "{{python_binary_name}} --version"
+  register: python_version_output
+  ignore_errors: yes
+- name: set current python version
+  set_fact:
+    current_python_version: "{{python_version_output.stdout}}"
+  when:
+    python_version_output.stdout is defined
+- name: set current python version
+  set_fact:
+    current_python_version: ""
+  when:
+    (python_version_output.stdout is not defined) or
+    (python_version_output.failed == true)
+- debug:
+    var: current_python_version
+- debug:
+    var: install_required
+- debug:
+    var: python_version_string
+- debug:
+    var: python_binary_name
+- name: "Install {{python_version_string}} if required"
+  include_tasks: install_python.yml
+  when: (install_required == true ) or
+    (current_python_version != python_version_string)

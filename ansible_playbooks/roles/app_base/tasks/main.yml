@@ -1,0 +1,29 @@
+---
+#- name: application django, angular, celery, web server, everything.
+#  hosts: APP
+#  become: yes
+#  gather_facts: yes
+#
+#  tasks:
+- include_vars: app.yml
+
+- name: collect ndoportal users home directory
+  become_user: ndoportal
+  shell: "echo $HOME"
+  register: echo_home_output
+
+- name: put ndoportal users home directory in a variable
+  set_fact:
+    ndo_home: "{{ echo_home_output.stdout }}"
+
+- name: put django path in  a variable
+  set_fact:
+    django_path: "{{ ndo_home }}/ndoportal/django_backend"
+
+- name: include nginx install
+  include_tasks: install_nginx.yml
+
+- name: include librespeed frontend install
+  include_role:
+    name: librespeed
+    tasks_from: install_frontend

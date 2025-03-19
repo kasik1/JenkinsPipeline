@@ -1,0 +1,21 @@
+- name: Get API key
+  uri:
+    url: "{{ venafi.url }}/Authorize/"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+    body:
+      Username: "{{ certs_bucket.user }}"
+      Password: "{{ certs_bucket.password }}"
+    body_format: json
+    method: POST
+    validate_certs: false
+    return_content: yes
+    timeout: 60
+  until: venafi_api_key is defined
+  no_log: false
+  delay: 5
+  retries: 10
+  register: venafi_api_key
+  ignore_errors: yes
+

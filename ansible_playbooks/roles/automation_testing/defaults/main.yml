@@ -1,0 +1,10 @@
+---
+# defaults file for get_repo
+
+ndo_root_path: /home/ndoportal
+ndo_app_path: "{{ ndo_root_path }}/ndoportal"
+ndo_test_path: "{{ ndo_app_path }}/tests"
+ndo_django_path: "{{ ndo_app_path }}/django_backend"
+ndo_test_results_path: "{{ ndo_root_path }}/test_results"
+app_user: ndoportal
+app_name: ndoportal

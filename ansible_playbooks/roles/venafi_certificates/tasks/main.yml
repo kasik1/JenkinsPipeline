@@ -1,0 +1,110 @@
+---
+- name: Vars used outside of playbook
+  set_fact:
+    crt_path: "{{ installation_path }}/{{ installation_name }}.crt"
+    privatekey_path: "{{ installation_path }}/private/{{ installation_name }}.pem"
+
+- name: Is this prod?
+  set_fact:
+    cert_env: "prod"
+  when: git_branch == "master"
+
+- name: create ssl private key directory
+  become: yes
+  file:
+    path: /etc/ssl/private/
+    state: directory
+    mode: 0644
+
+- name: Create temp folder for certificates
+  become: yes
+  file:
+    path: "{{ cert_temp }}"
+    state: directory
+    mode: 0644
+
+- name: Set env based variables
+  include_vars:
+    file: "vars/{{ cert_env }}.yml"
+
+- name: Get hostname
+  shell: hostname
+  register: hostname_output
+  become: yes
+
+- name: Create variable for snapshot
+  set_fact:
+    cert_fqdn: "{{ hostname_output['stdout'] }}"
+
+- name: Check if certificate exists
+  stat:
+    path: "{{crt_path}}"
+  register: cert_present
+
+- name: If certificate exists check expiration
+  block:
+  - name: Determine if certificate needs renewal (Older than a year)
+    shell: | 
+      openssl x509 -checkend 31536000 -noout -in {{ crt_path }}
+    register: cert_checkend
+    become: yes
+    ignore_errors: yes
+
+  - name: Marking certificate for renewal
+    set_fact:
+      cert_renewal: True
+    when: cert_checkend.rc == 1
+  when: cert_present.stat.exists
+
+#- name: Gather cert hostname
+#  shell: "openssl x509 -noout -subject -in {{ crt_path }}"
+#  register: cert_hostname
+#  become: yes
+#  when: cert_present.stat.exists
+#
+#- name: Gather cert issuer
+#  shell: "openssl x509 -issuer -noout -in {{ crt_path }}"
+#  register: cert_issuer
+#  become: yes
+#  when: cert_present.stat.exists
+
+
+# If certificate does not exist or needs renewal
+- block:
+  - name: Get an API token
+    include_tasks: authorize.yml
+
+  - name: Retrieve certificate
+    include_tasks: retrieve.yml
+    ignore_errors: yes
+    vars:
+      retry_count: 2
+    when: not cert_present.stat.exists
+
+  - name: Creating new certificate
+    include_tasks: create.yml
+    when:
+      # - '"does not exist" in venafi_cert.msg'
+      - venafi_cert is defined
+      - venafi_cert.status != 200
+      - not cert_present.stat.exists
+
+  - name: Trigger certificate renewal
+    include_tasks: renew.yml
+    when: cert_renewal
+
+  - name: Retrieve the Certificate after creation/renewal
+    include_tasks: retrieve.yml
+    vars:
+      retry_count: 10
+
+  - name: Apply certificate
+    include_tasks: apply.yml
+    when: venafi_cert.status == 200
+
+  - name: Cleanup files
+    file:
+      state: absent
+      path: "{{ cert_temp }}"
+    become: yes
+  when: not cert_present.stat.exists or cert_renewal

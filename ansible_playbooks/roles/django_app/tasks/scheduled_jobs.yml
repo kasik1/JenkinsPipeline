@@ -1,0 +1,18 @@
+- name: copy scheduled_jobs config
+  become_user: ndoportal
+  template:
+    src: scheduled_jobs.yml
+    dest:  "{{ ndo_home }}/scheduled_jobs.yml"
+
+- name: load scheduled jobs into database
+  become_user: ndoportal
+  run_once: yes
+  command: "pipenv run ./manage.py shell --command \"from scheduledjobs.loader import load_scheduled_jobs; load_scheduled_jobs('{{ ndo_home }}/scheduled_jobs.yml')\""
+  args:
+    chdir: "{{django_path}}"
+
+- name: save scheduled_jobs to cron
+  become_user: ndoportal
+  command: "pipenv run ./manage.py runscript save_all_crons"
+  args:
+    chdir: "{{django_path}}"
